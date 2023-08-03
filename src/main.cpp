@@ -248,8 +248,7 @@ int main(int argc, char *argv[])
 
     for(int col = 0; col < width_band; col++){
       double tal_pixel = tal_band_pixel_read.read_pixel(col);
-      double ea_emissivity = 0.85 * pow((-1 * log(tal_pixel)), 0.09); //TODO: Olhar esse cara ~ EA_terra
-
+      double ea_emissivity = 0.85 * pow((-1 * log(tal_pixel)), 0.09);
       double eo_emissivity = 0.95 + 0.01 * lai_matriz[line][col];
       if (definitelyLessThan(ndvi_matriz[line][col], 0) || definitelyGreaterThan(lai_matriz[line][col], 2.99))
         double eo_emissivity = 0.98;
@@ -280,6 +279,35 @@ int main(int argc, char *argv[])
 
 
   // ================= COMPUTE SOIL HEAT (G)
+
+  double G_matriz[height_band][width_band];
+
+  std::ofstream outputG("../out_data_txt/G.txt"); 
+  std::streambuf* coutG = std::cout.rdbuf();
+  std::cout.rdbuf(outputG.rdbuf());
+
+  std::cout << "G - soil heat flux" << std::endl;
+  for(int line = 0; line < height_band; line++){ 
+    for (int col = 0; col < width_band; col++)
+    {
+      double G;
+      if (essentiallyEqual(ndvi_matriz[line][col], 0) || definitelyGreaterThan(ndvi_matriz[line][col], 0))
+      {
+        double ndvi_pixel_pow_4 = ndvi_matriz[line][col] * ndvi_matriz[line][col] * ndvi_matriz[line][col] * ndvi_matriz[line][col];
+        G = (surface_temperature_matriz[line][col] - 273.15) * (0.0038 + 0.0074 * albedo_matriz[line][col]) *
+                              (1 - 0.98 * ndvi_pixel_pow_4) * net_radiation_matriz[line][col];
+      }
+      else
+        G = 0.5 * net_radiation_matriz[line][col];
+
+      if (definitelyLessThan(G, 0))
+        G = 0;
+ 
+      G_matriz[line][col] = G;
+      std::cout << G << " ";
+    }
+    std::cout << std::endl;
+  }
 
 
   return 0;
