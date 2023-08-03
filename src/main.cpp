@@ -2,6 +2,10 @@
 #include "utils.h"
 #include "parameters.h"
 #include "pixel_reader.h"
+#include "candidate.h"
+#include "STEEP.h"
+#include "debug.h"
+#include "products.h"
 
 int main(int argc, char *argv[])
 {
@@ -169,6 +173,30 @@ int main(int argc, char *argv[])
   }
 
 
+  // ================= COMPUTE PAI
+
+  double pai_matriz[height_band][width_band];
+
+  std::ofstream outputPAI("../out_data_txt/pai.txt"); 
+  std::streambuf* coutPAI = std::cout.rdbuf();
+  std::cout.rdbuf(outputPAI.rdbuf());
+
+  std::cout << "PAI" << std::endl;
+  for(int line = 0; line < height_band; line++){ 
+    for (int col = 0; col < width_band; col++){
+      double pai_value = 10.1 * (reflectance_matriz[4][line][col] - sqrt(reflectance_matriz[3][line][col])) + 3.1;
+
+      if (pai_value < 0) {
+        pai_value = 0;
+      }
+
+      std::cout << pai_value << " ";
+      pai_matriz[line][col] = pai_value;
+    }
+    std::cout << std::endl;
+  }
+
+
   // ================= COMPUTE SURFACE TEMP
 
   double surface_temperature_matriz[height_band][width_band];
@@ -309,6 +337,337 @@ int main(int argc, char *argv[])
     std::cout << std::endl;
   }
 
+
+  // ============== SELEÇÃO DE PIXEL
+
+  std::vector<std::vector<double>> pai_vector;
+  std::vector<std::vector<double>> ndvi_vector;
+  std::vector<std::vector<double>> surface_temperature_vector;
+  std::vector<std::vector<double>> albedo_vector;
+  std::vector<std::vector<double>> net_radiation_vector;
+  std::vector<std::vector<double>> soil_heat_vector;
+
+  for (int i = 0; i < height_band; i++) {
+    std::vector<double> pai_vector_interno;
+    std::vector<double> ndvi_vector_interno;
+    std::vector<double> surface_temperature_vector_interno;
+    std::vector<double> albedo_vector_interno;
+    std::vector<double> net_radiation_vector_interno;
+    std::vector<double> soil_heat_vector_interno;
+  
+    for (int j = 0; j < width_band; j++) {
+      pai_vector_interno.push_back(pai_matriz[i][j]);
+      ndvi_vector_interno.push_back(ndvi_matriz[i][j]);
+      surface_temperature_vector_interno.push_back(surface_temperature_matriz[i][j]);
+      albedo_vector_interno.push_back(albedo_matriz[i][j]);
+      net_radiation_vector_interno.push_back(net_radiation_matriz[i][j]);
+      soil_heat_vector_interno.push_back(G_matriz[i][j]);
+    }
+
+    pai_vector.push_back(pai_vector_interno);
+    ndvi_vector.push_back(ndvi_vector_interno);
+    surface_temperature_vector.push_back(surface_temperature_vector_interno);
+    albedo_vector.push_back(albedo_vector_interno);
+    net_radiation_vector.push_back(net_radiation_vector_interno);
+    soil_heat_vector.push_back(soil_heat_vector_interno);
+  }
+
+  Candidate hot_pixel, cold_pixel;
+  hot_pixel = getHotPixelSTEPP(ndvi_vector, surface_temperature_vector, albedo_vector, net_radiation_vector, soil_heat_vector, height_band, width_band);
+  cold_pixel = getColdPixelSTEPP(ndvi_vector, surface_temperature_vector, albedo_vector, net_radiation_vector, soil_heat_vector, height_band, width_band);
+
+
+  // ============== CALCULO DO CICLO RAH INICIAL
+
+  // talvez tenha algo de errado com esses caras
+  double ustar_station = (VON_KARMAN * station.v6) / (log(station.WIND_SPEED / station.SURFACE_ROUGHNESS));
+  double u10 = (ustar_station / VON_KARMAN) * log(10 / station.SURFACE_ROUGHNESS); // TODO: Talvez esse cara esteja errado
+
+  double ndvi_min = 1.0;
+  double ndvi_max = 0.0;
+  for (int line = 0; line < height_band; line++)
+  {
+    std::vector<double> ndvi_line = ndvi_vector[line];
+    for (int col = 0; col < width_band; col++)
+    {
+      if (ndvi_line[col] < ndvi_min)
+        ndvi_min = ndvi_line[col];
+      if (ndvi_line[col] > ndvi_max)
+        ndvi_max = ndvi_line[col];
+    }
+  }
+
+  double d0_matriz[height_band][35];
+  double zom_matriz[height_band][35];
+  double ustar_matriz[height_band][35];
+  double kb1_matriz[height_band][35];
+  double aerodynamic_resistance_matriz[height_band][35];
+  // double ndvi_matriz[height_band][35];
+  // vectorToArray(ndvi_vector, ndvi_matriz);
+
+  for (int line = 0; line < height_band; line++)
+  {
+    d0_fuction(pai_vector[line], width_band, d0_matriz[line]);
+    zom_fuction(station.A_ZOM, station.B_ZOM, ndvi_matriz[line], width_band, zom_matriz[line], d0_matriz[line], pai_vector[line]);
+    ustar_fuction(u10, zom_matriz[line], width_band, ustar_matriz[line], d0_matriz[line]);
+    kb_function(ustar_matriz[line], zom_matriz[line], pai_vector[line], ndvi_matriz[line], ndvi_max, ndvi_min, width_band, kb1_matriz[line]);
+    aerodynamic_resistance_fuction(ustar_matriz[line], width_band, aerodynamic_resistance_matriz[line], zom_matriz[line], d0_matriz[line], kb1_matriz[line]);
+  }
+
+  std::vector<std::vector<double>> d0_vector = arrayToVector(d0_matriz, height_band, width_band);
+  std::vector<std::vector<double>> zom_vector = arrayToVector(zom_matriz, height_band, width_band);
+  std::vector<std::vector<double>> ustar_vector = arrayToVector(ustar_matriz, height_band, width_band);
+  std::vector<std::vector<double>> kb1_vector = arrayToVector(kb1_matriz, height_band, width_band);
+  std::vector<std::vector<double>> aerodynamic_resistance_vector = arrayToVector(aerodynamic_resistance_matriz, height_band, width_band);
+
+  std::ofstream outputD0("../out_data_txt/D0.txt"); 
+  std::streambuf* coutD0 = std::cout.rdbuf();
+  std::cout.rdbuf(outputD0.rdbuf());
+  printVector2x2(d0_vector);
+
+  std::ofstream outputZOM("../out_data_txt/ZOM.txt"); 
+  std::streambuf* coutZOM = std::cout.rdbuf();
+  std::cout.rdbuf(outputZOM.rdbuf());
+  printVector2x2(zom_vector);
+
+  std::ofstream outputUSTAR("../out_data_txt/USTAR.txt"); 
+  std::streambuf* coutUSTAR = std::cout.rdbuf();
+  std::cout.rdbuf(outputUSTAR.rdbuf());
+  printVector2x2(ustar_vector);
+
+  std::ofstream outputKB1("../out_data_txt/KB1.txt"); 
+  std::streambuf* coutKB1 = std::cout.rdbuf();
+  std::cout.rdbuf(outputKB1.rdbuf());
+  printVector2x2(kb1_vector);
+
+  std::ofstream outputRAH_INI("../out_data_txt/RAH_INI.txt"); 
+  std::streambuf* coutRAH_INI = std::cout.rdbuf();
+  std::cout.rdbuf(outputRAH_INI.rdbuf());
+  printVector2x2(aerodynamic_resistance_vector);
+
+  // ============== CALCULO DO CICLO RAH FINAL
+
+  // Auxiliaries arrays calculation
+  double L[width_band];
+  double sensible_heat_flux_line[width_band];
+  double y_01_line[width_band], y_2_line[width_band], x_200_line[width_band];
+  double psi_01_line[width_band], psi_2_line[width_band], psi_200_line[width_band];
+
+  std::vector<double> ustar_write_line, aerodynamic_resistance_write_line;
+  std::vector<std::vector<double>> ustar_previous, aerodynamic_resistance_previous;
+
+  // pega a resistencia aerodinamica do PQ e adiciona no objeto hot_pixel
+  double hot_pixel_aerodynamic = aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col];
+  hot_pixel.aerodynamic_resistance.push_back(hot_pixel_aerodynamic);
+
+  // pega a resistencia aerodinamica do PF e adiciona no objeto cold_pixel
+  double cold_pixel_aerodynamic = aerodynamic_resistance_vector[cold_pixel.line][cold_pixel.col];
+  cold_pixel.aerodynamic_resistance.push_back(cold_pixel_aerodynamic);
+
+  // calcula o FC para o pixel quente e para o pixel frio
+  double fc_hot = 1 - pow((ndvi_vector[hot_pixel.line][hot_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
+  double fc_cold = 1 - pow((ndvi_vector[cold_pixel.line][cold_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
+
+  double rah_aux_hot;
+  double rah_aux_cold;
+
+  double H_pf_terra;
+  double H_pq_terra;
+
+  double rah_ini_pq_terra;
+  double rah_ini_pf_terra;
+  for (int i = 0; i < 2; i++)
+  {
+    ustar_previous = ustar_vector;                                    //aux
+    aerodynamic_resistance_previous = aerodynamic_resistance_vector;  //aux
+
+    rah_ini_pq_terra = hot_pixel.aerodynamic_resistance[i];
+    rah_ini_pf_terra = cold_pixel.aerodynamic_resistance[i];
+
+    double LEc_terra = 0.55 * fc_hot * (hot_pixel.net_radiation - hot_pixel.soil_heat_flux) * hot_pixel.soil_heat_flux;
+    double LEc_terra_pf = 1.75 * fc_cold * (cold_pixel.net_radiation - cold_pixel.soil_heat_flux) * cold_pixel.soil_heat_flux;
+
+    H_pf_terra = cold_pixel.net_radiation - cold_pixel.soil_heat_flux - LEc_terra_pf;
+    double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
+
+    H_pq_terra = hot_pixel.net_radiation - hot_pixel.soil_heat_flux - LEc_terra;
+    double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
+
+    double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
+    double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));        
+
+    for (int line = 0; line < height_band; line++)
+    {
+      for (int col = 0; col < width_band; col++)
+      {
+        double DISP = d0_matriz[line][col];
+        double dT_ini_terra = (a + b * (surface_temperature_vector[line][col] - 273.15));
+        
+        // H_ini_terra
+        sensible_heat_flux_line[col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / aerodynamic_resistance_previous[line][col]; 
+
+        // L_MB_terra
+        double ustar_pow_3 = ustar_previous[line][col] * ustar_previous[line][col] * ustar_previous[line][col];
+        L[col] = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * sensible_heat_flux_line[col]));
+
+        y_01_line[col] = pow((1 - (16 * 0.1) / L[col]), 0.25);
+        y_2_line[col] = pow((1 - (16 * (10 - DISP)) / L[col]), 0.25);
+        x_200_line[col] = pow((1 - (16 * (10 - DISP)) / L[col]), 0.25);
+
+        // psi_m200_terra
+        if (!isnan(L[col]) && L[col] > 0)
+          psi_200_line[col] = -5 * ((10 - DISP) / L[col]);
+        else
+          psi_200_line[col] = 2 * log((1 + x_200_line[col]) / 2) + log((1 + x_200_line[col] * x_200_line[col]) / 2) - 2 * atan(x_200_line[col]) + 0.5 * PI;
+
+        // psi_m2_terra
+        if (!isnan(L[col]) && L[col] > 0)
+          psi_2_line[col] = -5 * ((10 - DISP) / L[col]);
+        else
+          psi_2_line[col] = 2 * log((1 + y_2_line[col] * y_2_line[col]) / 2);
+
+        // u_ast_corr_terra
+        double ust = (VON_KARMAN * ustar_vector[line][col]) / log(((10 - DISP) / zom_matriz[line][col]) - psi_200_line[col]);
+        ustar_write_line.push_back(ust);
+
+        double zoh_terra = zom_matriz[line][col] / pow(exp(1.0), (kb1_matriz[line][col]));
+        double temp_rah1_corr_terra = (ust * VON_KARMAN);
+        double temp_rah2_corr_terra = log((10 - DISP) / zom_matriz[line][col]) - psi_2_line[col];
+        double temp_rah3_corr_terra = temp_rah1_corr_terra * log(zom_matriz[line][col] / zoh_terra);        
+        double rah = (temp_rah1_corr_terra * temp_rah2_corr_terra) + temp_rah3_corr_terra;
+
+        aerodynamic_resistance_write_line.push_back(rah);
+
+        if (line == hot_pixel.line && col == hot_pixel.col)
+        {
+          rah_aux_hot = aerodynamic_resistance_write_line[col];
+          hot_pixel.aerodynamic_resistance.push_back(rah_aux_hot);
+        }
+
+        if (line == cold_pixel.line && col == cold_pixel.col)
+        {
+          rah_aux_cold = aerodynamic_resistance_write_line[col];
+          cold_pixel.aerodynamic_resistance.push_back(rah_aux_cold);
+        }
+      }
+      ustar_vector[line] = ustar_write_line;
+      aerodynamic_resistance_vector[line] = aerodynamic_resistance_write_line;
+
+      ustar_write_line.clear();
+      aerodynamic_resistance_write_line.clear();
+    }
+
+    //     #Error rah
+    // rah_dif_terra =  rah_ini_terra.subtract(rah_corr_terra)
+    // rah_dif_terra = ee.Algorithms.If(rah_dif_terra.lt(0), rah_dif_terra.multiply(-1), rah_dif_terra )
+    // rah_dif_terra = img_1.multiply(rah_dif_terra)
+    // teste_rah_terra = rah_dif_terra.multiply(100).divide(rah_corr_terra)
+  }
+
+  std::ofstream outputRAH_FINAL("../out_data_txt/RAH_FINAL.txt"); 
+  std::streambuf* coutRAH_FINAL = std::cout.rdbuf();
+  std::cout.rdbuf(outputRAH_FINAL.rdbuf());
+  printVector2x2(aerodynamic_resistance_vector);
+
+
+  // ============== CALCULO DA EVOAPOTRANSPITAÇÃO
+
+  double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
+  double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
+
+  double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
+  double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
+
+  std::ofstream outputH("../out_data_txt/H.txt"); 
+  std::streambuf* coutH = std::cout.rdbuf();
+  std::cout.rdbuf(outputH.rdbuf());
+
+  // Sensible hear flux H
+  for (int line = 0; line < height_band; line++) {
+    for (int col = 0; col < width_band; col++) {
+      sensible_heat_flux_line[col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (surface_temperature_vector[line][col] - 273.15)) / aerodynamic_resistance_vector[line][col];
+
+      if (!isnan(sensible_heat_flux_line[col]) && sensible_heat_flux_line[col] > (net_radiation_vector[line][col] - soil_heat_vector[line][col])) {
+        sensible_heat_flux_line[col] = net_radiation_vector[line][col] - soil_heat_vector[line][col];
+      }
+
+      std::cout << sensible_heat_flux_line[col] << " ";
+    }
+    std::cout << std::endl;
+  }
+
+
+  double latent_heat_flux_matriz[height_band][35];
+  double net_radiation_24h_matriz[height_band][35];
+  double evapotranspiration_fraction_matriz[height_band][35];
+  double sensible_heat_flux_24h_matriz[height_band][35];
+  double latent_heat_flux_24h_matriz[height_band][35];
+  double evapotranspiration_24h_matriz[height_band][35];
+
+  //Upscalling temporal
+  double dr = (1 / mtl.distance_earth_sun) * (1 / mtl.distance_earth_sun);
+  double sigma = 0.409*sin(((2*PI/365)*mtl.julian_day)-1.39);
+  double phi = (PI/180) * station.latitude;
+  double omegas = acos(-tan(phi)*tan(sigma));
+  double Ra24h = (((24*60/PI)*GSC*dr)*(omegas*sin(phi)*
+                              sin(sigma)+cos(phi)*cos(sigma)*sin(omegas)))*(1000000/86400.0);
+
+  //Short wave radiation incident in 24 hours (Rs24h)
+  double Rs24h = station.INTERNALIZATION_FACTOR * sqrt(station.v7_max - station.v7_min) * Ra24h;
+
+  // double net_radiation_matriz[height_band][35];
+  // double soil_heat_matriz[height_band][35];
+  // double albedo_matriz[height_band][35];
+  // vectorToArray(net_radiation_vector, net_radiation_matriz);
+  // vectorToArray(soil_heat_vector, soil_heat_matriz);
+  // vectorToArray(albedo_vector, albedo_matriz);
+  
+  // Latent heat flux LE & Compute evapotranspiration
+  for(int line = 0; line < height_band; line++){
+      latent_heat_flux_function(net_radiation_matriz[line], G_matriz[line], sensible_heat_flux_line, width_band, latent_heat_flux_matriz[line]);
+      net_radiation_24h_function(albedo_matriz[line], Ra24h, Rs24h, width_band, net_radiation_24h_matriz[line]);
+      evapotranspiration_fraction_fuction(latent_heat_flux_matriz[line], net_radiation_matriz[line], G_matriz[line], width_band, evapotranspiration_fraction_matriz[line]);
+      sensible_heat_flux_24h_fuction(evapotranspiration_fraction_matriz[line], net_radiation_24h_matriz[line], width_band, sensible_heat_flux_24h_matriz[line]);
+      latent_heat_flux_24h_function(evapotranspiration_fraction_matriz[line], net_radiation_24h_matriz[line], width_band, latent_heat_flux_24h_matriz[line]);
+      evapotranspiration_24h_function(latent_heat_flux_24h_matriz[line], station, width_band, evapotranspiration_24h_matriz[line]);
+  }
+
+  std::vector<std::vector<double>> latent_heat_flux_vector = arrayToVector(latent_heat_flux_matriz, height_band, width_band);
+  std::vector<std::vector<double>> net_radiation_24h_vector = arrayToVector(net_radiation_24h_matriz, height_band, width_band);
+  std::vector<std::vector<double>> evapotranspiration_fraction_vector = arrayToVector(evapotranspiration_fraction_matriz, height_band, width_band);
+  std::vector<std::vector<double>> sensible_heat_flux_24h_vector = arrayToVector(sensible_heat_flux_24h_matriz, height_band, width_band);
+  std::vector<std::vector<double>> latent_heat_flux_24h_vector = arrayToVector(latent_heat_flux_24h_matriz, height_band, width_band);
+  std::vector<std::vector<double>> evapotranspiration_24h_vector = arrayToVector(evapotranspiration_24h_matriz, height_band, width_band);
+
+  std::ofstream outputLE("../out_data_txt/LE.txt"); 
+  std::streambuf* coutLE = std::cout.rdbuf();
+  std::cout.rdbuf(outputLE.rdbuf());
+  printVector2x2(latent_heat_flux_vector);
+
+  std::ofstream outputRN24("../out_data_txt/RN24.txt"); 
+  std::streambuf* coutRN24 = std::cout.rdbuf();
+  std::cout.rdbuf(outputRN24.rdbuf());
+  printVector2x2(net_radiation_24h_vector);
+
+  std::ofstream outputET_FRAC("../out_data_txt/ET_FRAC.txt"); 
+  std::streambuf* coutET_FRAC = std::cout.rdbuf();
+  std::cout.rdbuf(outputET_FRAC.rdbuf());
+  printVector2x2(evapotranspiration_fraction_vector);
+
+  std::ofstream outputH24("../out_data_txt/H24.txt"); 
+  std::streambuf* coutH24 = std::cout.rdbuf();
+  std::cout.rdbuf(outputH24.rdbuf());
+  printVector2x2(sensible_heat_flux_24h_vector);
+
+  std::ofstream outputRAH_LE24("../out_data_txt/RAH_LE24.txt"); 
+  std::streambuf* coutRAH_LE24 = std::cout.rdbuf();
+  std::cout.rdbuf(outputRAH_LE24.rdbuf());
+  printVector2x2(latent_heat_flux_24h_vector);
+
+  std::ofstream outputRAH_ET24("../out_data_txt/RAH_ET24.txt"); 
+  std::streambuf* coutRAH_ET24 = std::cout.rdbuf();
+  std::cout.rdbuf(outputRAH_ET24.rdbuf());
+  printVector2x2(evapotranspiration_24h_vector);
 
   return 0;
 }
