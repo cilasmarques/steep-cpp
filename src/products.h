@@ -92,3 +92,5 @@ void latent_heat_flux_24h_function(double evapotranspiration_fraction_line[], do
  * @param  evapotranspiration_24h_line[]: Auxiliary array for save the calculated value of ET24h for the line.
  */
 void evapotranspiration_24h_function(double latent_heat_flux_24h_line[], Station station, int width_band, double evapotranspiration_24h_line[]);
+
+void evapotranspiration_ulisses_function(double net_radiation_24h_line[], double evapotranspiration_fraction_line[], int width_band, double evapotranspiration_24h_line[]);

@@ -337,8 +337,7 @@ int main(int argc, char *argv[])
     std::cout << std::endl;
   }
 
-
-  // ============== SELEÇÃO DE PIXEL
+  // ============== FINALIZA A PRIMEIRA ETAPA
 
   std::vector<std::vector<double>> pai_vector;
   std::vector<std::vector<double>> ndvi_vector;
@@ -372,6 +371,9 @@ int main(int argc, char *argv[])
     soil_heat_vector.push_back(soil_heat_vector_interno);
   }
 
+
+  // ============== SELEÇÃO DE PIXEL
+
   Candidate hot_pixel, cold_pixel;
   hot_pixel = getHotPixelSTEPP(ndvi_vector, surface_temperature_vector, albedo_vector, net_radiation_vector, soil_heat_vector, height_band, width_band);
   cold_pixel = getColdPixelSTEPP(ndvi_vector, surface_temperature_vector, albedo_vector, net_radiation_vector, soil_heat_vector, height_band, width_band);
@@ -402,8 +404,6 @@ int main(int argc, char *argv[])
   double ustar_matriz[height_band][35];
   double kb1_matriz[height_band][35];
   double aerodynamic_resistance_matriz[height_band][35];
-  // double ndvi_matriz[height_band][35];
-  // vectorToArray(ndvi_vector, ndvi_matriz);
 
   for (int line = 0; line < height_band; line++)
   {
@@ -476,6 +476,12 @@ int main(int argc, char *argv[])
 
   double rah_ini_pq_terra;
   double rah_ini_pf_terra;
+
+  std::ofstream outputH_INI("../out_data_txt/PSI200_INI.txt"); 
+  std::streambuf* coutH_INI = std::cout.rdbuf();
+  std::cout.rdbuf(outputH_INI.rdbuf());
+
+
   for (int i = 0; i < 2; i++)
   {
     ustar_previous = ustar_vector;                                    //aux
@@ -484,14 +490,16 @@ int main(int argc, char *argv[])
     rah_ini_pq_terra = hot_pixel.aerodynamic_resistance[i];
     rah_ini_pf_terra = cold_pixel.aerodynamic_resistance[i];
 
-    double LEc_terra = 0.55 * fc_hot * (hot_pixel.net_radiation - hot_pixel.soil_heat_flux) * hot_pixel.soil_heat_flux;
-    double LEc_terra_pf = 1.75 * fc_cold * (cold_pixel.net_radiation - cold_pixel.soil_heat_flux) * cold_pixel.soil_heat_flux;
+    double LEc_terra = 0.55 * fc_hot * (hot_pixel.net_radiation - hot_pixel.soil_heat_flux) * 0.78;
+    double LEc_terra_pf = 1.75 * fc_cold * (cold_pixel.net_radiation - cold_pixel.soil_heat_flux) * 0.78;
 
     H_pf_terra = cold_pixel.net_radiation - cold_pixel.soil_heat_flux - LEc_terra_pf;
     double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
 
     H_pq_terra = hot_pixel.net_radiation - hot_pixel.soil_heat_flux - LEc_terra;
     double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
+
+    double x = aerodynamic_resistance_previous[hot_pixel.line][hot_pixel.col];
 
     double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
     double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));        
@@ -515,19 +523,19 @@ int main(int argc, char *argv[])
         x_200_line[col] = pow((1 - (16 * (10 - DISP)) / L[col]), 0.25);
 
         // psi_m200_terra
-        if (!isnan(L[col]) && L[col] > 0)
-          psi_200_line[col] = -5 * ((10 - DISP) / L[col]);
-        else
+        if (L[col] < 0)
           psi_200_line[col] = 2 * log((1 + x_200_line[col]) / 2) + log((1 + x_200_line[col] * x_200_line[col]) / 2) - 2 * atan(x_200_line[col]) + 0.5 * PI;
+        else
+          psi_200_line[col] = -5 * ((10 - DISP) / L[col]);
 
         // psi_m2_terra
-        if (!isnan(L[col]) && L[col] > 0)
-          psi_2_line[col] = -5 * ((10 - DISP) / L[col]);
-        else
+        if (L[col] < 0)
           psi_2_line[col] = 2 * log((1 + y_2_line[col] * y_2_line[col]) / 2);
+        else
+          psi_2_line[col] = -5 * ((10 - DISP) / L[col]);
 
         // u_ast_corr_terra
-        double ust = (VON_KARMAN * ustar_vector[line][col]) / log(((10 - DISP) / zom_matriz[line][col]) - psi_200_line[col]);
+        double ust = (VON_KARMAN * ustar_previous[line][col]) / (log((10 - DISP) / zom_matriz[line][col]) - psi_200_line[col]);
         ustar_write_line.push_back(ust);
 
         double zoh_terra = zom_matriz[line][col] / pow(exp(1.0), (kb1_matriz[line][col]));
@@ -549,13 +557,21 @@ int main(int argc, char *argv[])
           rah_aux_cold = aerodynamic_resistance_write_line[col];
           cold_pixel.aerodynamic_resistance.push_back(rah_aux_cold);
         }
+
+        std::cout << psi_200_line[col] << " ";
       }
+
+      std::cout << std::endl;
+
       ustar_vector[line] = ustar_write_line;
       aerodynamic_resistance_vector[line] = aerodynamic_resistance_write_line;
 
       ustar_write_line.clear();
       aerodynamic_resistance_write_line.clear();
     }
+
+
+    std::cout << " bbbbbbbbbbbbb " << std::endl << std::endl << std::endl << std::endl << std::endl ;
 
     //     #Error rah
     // rah_dif_terra =  rah_ini_terra.subtract(rah_corr_terra)
@@ -603,6 +619,7 @@ int main(int argc, char *argv[])
   double sensible_heat_flux_24h_matriz[height_band][35];
   double latent_heat_flux_24h_matriz[height_band][35];
   double evapotranspiration_24h_matriz[height_band][35];
+  double evapotranspiration_ulisses_matriz[height_band][35];
 
   //Upscalling temporal
   double dr = (1 / mtl.distance_earth_sun) * (1 / mtl.distance_earth_sun);
@@ -614,13 +631,6 @@ int main(int argc, char *argv[])
 
   //Short wave radiation incident in 24 hours (Rs24h)
   double Rs24h = station.INTERNALIZATION_FACTOR * sqrt(station.v7_max - station.v7_min) * Ra24h;
-
-  // double net_radiation_matriz[height_band][35];
-  // double soil_heat_matriz[height_band][35];
-  // double albedo_matriz[height_band][35];
-  // vectorToArray(net_radiation_vector, net_radiation_matriz);
-  // vectorToArray(soil_heat_vector, soil_heat_matriz);
-  // vectorToArray(albedo_vector, albedo_matriz);
   
   // Latent heat flux LE & Compute evapotranspiration
   for(int line = 0; line < height_band; line++){
@@ -630,6 +640,7 @@ int main(int argc, char *argv[])
       sensible_heat_flux_24h_fuction(evapotranspiration_fraction_matriz[line], net_radiation_24h_matriz[line], width_band, sensible_heat_flux_24h_matriz[line]);
       latent_heat_flux_24h_function(evapotranspiration_fraction_matriz[line], net_radiation_24h_matriz[line], width_band, latent_heat_flux_24h_matriz[line]);
       evapotranspiration_24h_function(latent_heat_flux_24h_matriz[line], station, width_band, evapotranspiration_24h_matriz[line]);
+      evapotranspiration_ulisses_function(net_radiation_24h_matriz[line], evapotranspiration_fraction_matriz[line], width_band, evapotranspiration_ulisses_matriz[line]);
   }
 
   std::vector<std::vector<double>> latent_heat_flux_vector = arrayToVector(latent_heat_flux_matriz, height_band, width_band);
@@ -638,6 +649,7 @@ int main(int argc, char *argv[])
   std::vector<std::vector<double>> sensible_heat_flux_24h_vector = arrayToVector(sensible_heat_flux_24h_matriz, height_band, width_band);
   std::vector<std::vector<double>> latent_heat_flux_24h_vector = arrayToVector(latent_heat_flux_24h_matriz, height_band, width_band);
   std::vector<std::vector<double>> evapotranspiration_24h_vector = arrayToVector(evapotranspiration_24h_matriz, height_band, width_band);
+  std::vector<std::vector<double>> evapotranspiration_ulisses_vector = arrayToVector(evapotranspiration_ulisses_matriz, height_band, width_band);
 
   std::ofstream outputLE("../out_data_txt/LE.txt"); 
   std::streambuf* coutLE = std::cout.rdbuf();
@@ -659,15 +671,21 @@ int main(int argc, char *argv[])
   std::cout.rdbuf(outputH24.rdbuf());
   printVector2x2(sensible_heat_flux_24h_vector);
 
-  std::ofstream outputRAH_LE24("../out_data_txt/RAH_LE24.txt"); 
+  std::ofstream outputRAH_LE24("../out_data_txt/LE24.txt"); 
   std::streambuf* coutRAH_LE24 = std::cout.rdbuf();
   std::cout.rdbuf(outputRAH_LE24.rdbuf());
   printVector2x2(latent_heat_flux_24h_vector);
 
-  std::ofstream outputRAH_ET24("../out_data_txt/RAH_ET24.txt"); 
+  std::ofstream outputRAH_ET24("../out_data_txt/ET24.txt"); 
   std::streambuf* coutRAH_ET24 = std::cout.rdbuf();
   std::cout.rdbuf(outputRAH_ET24.rdbuf());
   printVector2x2(evapotranspiration_24h_vector);
+
+  std::ofstream outputRAH_ET242("../out_data_txt/ET_ULISSES.txt"); 
+  std::streambuf* coutRAH_ET242 = std::cout.rdbuf();
+  std::cout.rdbuf(outputRAH_ET242.rdbuf());
+  printVector2x2(evapotranspiration_ulisses_vector);
+
 
   return 0;
 }

@@ -7,10 +7,16 @@ void d0_fuction(std::vector<double> pai_line, int width_band, double d0_line[])
 
   for (int col = 0; col < width_band; col++)
   {
+
     double pai = pai_line[col];
     double cd1_pai_root = sqrt(CD1 * pai);
 
-    d0_line[col] = HGHT * ((1 - (1 / cd1_pai_root)) + (pow(exp(1.0), -cd1_pai_root) / cd1_pai_root));
+    double DISP = HGHT * ((1 - (1 / cd1_pai_root)) + (pow(exp(1.0), -cd1_pai_root) / cd1_pai_root));
+    if (pai < 0) {
+      DISP = 0;
+    }
+
+    d0_line[col] = DISP;
   }
 };
 
@@ -220,4 +226,12 @@ void evapotranspiration_24h_function(double latent_heat_flux_24h_line[], Station
 {
   for (int col = 0; col < width_band; col++)
     evapotranspiration_24h_line[col] = (latent_heat_flux_24h_line[col] * 86400) / ((2.501 - 0.00236 * (station.v7_max + station.v7_min) / 2) * 1e+6);
+};
+
+
+void evapotranspiration_ulisses_function(double net_radiation_24h_line[], double evapotranspiration_fraction_line[], int width_band, double evapotranspiration_24h_line[])
+{
+  for (int col = 0; col < width_band; col++)
+    evapotranspiration_24h_line[col] =  net_radiation_24h_line[col] * evapotranspiration_fraction_line[col] * 0.035;
+  
 };
