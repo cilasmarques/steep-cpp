@@ -1,0 +1,95 @@
+  for (int j = 1; j < 8; j++)
+  {
+    std::string output = "reflectance-" + std::to_string(j);
+    std::ofstream outputReflectance("../output/reflectance" + output + ".txt");
+    std::streambuf *coutReflectance = std::cout.rdbuf();
+    std::cout.rdbuf(outputReflectance.rdbuf());
+
+    std::cout << output << std::endl;
+    for (int l = 0; l < height_band; l++)
+    {
+      for (int c = 0; c < width_band; c++)
+      {
+        std::cout << reflectance_matrix[l][c][j] << " ";
+      }
+      std::cout << std::endl;
+    }
+  }
+
+  std::ofstream outputAlbedo("../output/albedo.txt");
+  std::streambuf *coutAlbedo = std::cout.rdbuf();
+  std::cout.rdbuf(outputAlbedo.rdbuf());
+  std::cout << "albedo" << std::endl;
+  for (int l = 0; l < height_band; l++)
+  {
+    for (int c = 0; c < width_band; c++)
+    {
+      std::cout << albedo_matrix[l][c] << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  std::ofstream outputNDVI("../output/ndvi.txt");
+  std::streambuf *coutNDVI = std::cout.rdbuf();
+  std::cout.rdbuf(outputNDVI.rdbuf());
+  std::cout << "ndvi" << std::endl;
+  for (int l = 0; l < height_band; l++)
+  {
+    for (int c = 0; c < width_band; c++)
+    {
+      std::cout << ndvi_matrix[l][c] << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  std::ofstream outputLAI("../output/lai.txt");
+  std::streambuf *coutLAI = std::cout.rdbuf();
+  std::cout.rdbuf(outputLAI.rdbuf());
+  std::cout << "lai" << std::endl;
+  for (int l = 0; l < height_band; l++)
+  {
+    for (int c = 0; c < width_band; c++)
+    {
+      std::cout << lai_matrix[l][c] << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  std::ofstream outputPAI("../output/pai.txt");
+  std::streambuf *coutPAI = std::cout.rdbuf();
+  std::cout.rdbuf(outputPAI.rdbuf());
+  std::cout << "pai" << std::endl;
+  for (int l = 0; l < height_band; l++)
+  {
+    for (int c = 0; c < width_band; c++)
+    {
+      std::cout << pai_matrix[l][c] << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  std::ofstream outputRN("../output/net_radiation.txt");
+  std::streambuf *coutRN = std::cout.rdbuf();
+  std::cout.rdbuf(outputRN.rdbuf());
+  std::cout << "net_radiation" << std::endl;
+  for (int l = 0; l < height_band; l++)
+  {
+    for (int c = 0; c < width_band; c++)
+    {
+      std::cout << net_radiation_matrix[l][c] << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  std::ofstream outputSH("../output/soil_heat.txt");
+  std::streambuf *coutSH = std::cout.rdbuf();
+  std::cout.rdbuf(outputSH.rdbuf());
+  std::cout << "soil_heat" << std::endl;
+  for (int l = 0; l < height_band; l++)
+  {
+    for (int c = 0; c < width_band; c++)
+    {
+      std::cout << soil_heat_matrix[l][c] << " ";
+    }
+    std::cout << std::endl;
+  }

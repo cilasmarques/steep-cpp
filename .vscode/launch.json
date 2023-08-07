@@ -8,16 +8,20 @@
       "program": "${workspaceFolder}/src/main",
 
       "args": [ //Landsat 5 2015065
-        "../../input_data/215065/landsat5/1990-03-14/small/B1.tif", // BLUE 
-        "../../input_data/215065/landsat5/1990-03-14/small/B2.tif", // GREEN
-        "../../input_data/215065/landsat5/1990-03-14/small/B3.tif", // RED
-        "../../input_data/215065/landsat5/1990-03-14/small/B4.tif", // NIR
-        "../../input_data/215065/landsat5/1990-03-14/small/B5.tif", // SWIR1
-        "../../input_data/215065/landsat5/1990-03-14/small/B6.tif", // TERMAL
-        "../../input_data/215065/landsat5/1990-03-14/small/B7.tif", // SWIR2
-        "../../input_data/215065/landsat5/1990-03-14/small/raster_el.tif",
-        "../../input_data/215065/landsat5/1990-03-14/small/MTL.txt",
-        "../../input_data/215065/landsat5/1990-03-14/small/station.csv"
+        "../../DEMO/input_data/215065/landsat5/1990-03-14/small/B1.tif", // BLUE 
+        "../../DEMO/input_data/215065/landsat5/1990-03-14/small/B2.tif", // GREEN
+        "../../DEMO/input_data/215065/landsat5/1990-03-14/small/B3.tif", // RED
+        "../../DEMO/input_data/215065/landsat5/1990-03-14/small/B4.tif", // NIR
+        "../../DEMO/input_data/215065/landsat5/1990-03-14/small/B5.tif", // SWIR1
+        "../../DEMO/input_data/215065/landsat5/1990-03-14/small/B6.tif", // TERMAL
+        "../../DEMO/input_data/215065/landsat5/1990-03-14/small/B7.tif", // SWIR2
+        "../../DEMO/input_data/215065/landsat5/1990-03-14/small/raster_el.tif",
+        "../../DEMO/input_data/215065/landsat5/1990-03-14/small/MTL.txt",
+        "../../DEMO/input_data/215065/landsat5/1990-03-14/small/station.csv",
+        "../land_cover_final.tif",
+        "../output",
+        "-meth=0",
+        "-nan=-3.39999995214436425e+38"
       ],
 
       "cwd": "."
