@@ -110,10 +110,10 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   { // STEEP
     sensible_heat_function_STEEP(hot_pixel, cold_pixel, station, height_band, width_band, ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, pai_vector, sensible_heat_flux_vector);
   }
-  // else
-  // {
-  //   sensible_heat_function_default(hot_pixel, cold_pixel, station, height_band, width_band, ndvi_vector, surface_temperature_vector, pai_vector, sensible_heat_flux_vector);
-  // }
+  else
+  {
+    sensible_heat_function_default(hot_pixel, cold_pixel, station, height_band, width_band, ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, sensible_heat_flux_vector);
+  }
 
   vector<vector<double>> latent_heat_flux_vector(height_band, vector<double>(width_band));
   vector<vector<double>> net_radiation_24h_vector(height_band, vector<double>(width_band));
