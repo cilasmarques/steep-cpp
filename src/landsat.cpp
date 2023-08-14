@@ -98,12 +98,12 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
     hot_pixel = getHotPixelASEBAL(ndvi_vector, surface_temperature_vector, albedo_vector, net_radiation_vector, soil_heat_vector, height_band, width_band);
     cold_pixel = getColdPixelASEBAL(ndvi_vector, surface_temperature_vector, albedo_vector, net_radiation_vector, soil_heat_vector, height_band, width_band);
   }
-  // else if (this->method == 2)
-  // { // ESA SEBAL
-  //   TIFF *land_cover = TIFFOpen(this->land_cover_path.c_str(), "r");
-  //   pair<Candidate, Candidate> pixels = getColdHotPixelsESA(&ndvi, &surface_temperature, &albedo, &net_radiation, &soil_heat, &land_cover, height_band, width_band, this->output_path);
-  //   hot_pixel = pixels.first, cold_pixel = pixels.second;
-  // }
+  else if (this->method == 2)
+  { // ESA SEBAL
+    TIFF *land_cover_tiff = TIFFOpen(this->land_cover_path.c_str(), "r");
+    pair<Candidate, Candidate> pixels = getColdHotPixelsESA(ndvi_vector, surface_temperature_vector, albedo_vector, net_radiation_vector, soil_heat_vector, land_cover_tiff, height_band, width_band);
+    hot_pixel = pixels.first, cold_pixel = pixels.second;
+  }
 
   vector<vector<double>> sensible_heat_flux_vector(height_band, vector<double>(width_band));
   if (this->method == 0)
