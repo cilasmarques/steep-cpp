@@ -60,11 +60,14 @@ int main(int argc, char *argv[])
       noData = atof(noData_flag.substr(5, noData_flag.size()).c_str());
   }
 
+  // load threads number value
+ 	int threadNum = 16;
+
   std::ofstream outputAlbedo("../output.txt"); 
   std::streambuf* coutAlbedo = std::cout.rdbuf();
   std::cout.rdbuf(outputAlbedo.rdbuf());
 
-  Landsat landsat = Landsat(method, bands_paths, tal_path, land_cover_path);
+  Landsat landsat = Landsat(method, bands_paths, tal_path, land_cover_path, threadNum);
   landsat.process_products(mtl, sensor, station);
 
   return 0;

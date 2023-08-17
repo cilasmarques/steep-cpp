@@ -1,6 +1,6 @@
 #include "landsat.h"
 
-Landsat::Landsat(int method, string bands_paths[], string tal_path, string land_cover_path)
+Landsat::Landsat(int method, string bands_paths[], string tal_path, string land_cover_path, int threadNum)
 {
   for (int i = 0; i < 8; i++)
     this->bands_paths[i] = bands_paths[i];
@@ -8,6 +8,7 @@ Landsat::Landsat(int method, string bands_paths[], string tal_path, string land_
   this->tal_path = tal_path;
   this->land_cover_path = land_cover_path;
   this->method = method;
+  this->threadNum = threadNum;
 };
 
 void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
@@ -108,7 +109,7 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   vector<vector<double>> sensible_heat_flux_vector(height_band, vector<double>(width_band));
   if (this->method == 0)
   { // STEEP
-    sensible_heat_function_STEEP(hot_pixel, cold_pixel, station, height_band, width_band, ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, pai_vector, sensible_heat_flux_vector);
+    sensible_heat_function_STEEP(hot_pixel, cold_pixel, station, height_band, width_band, threadNum, ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, pai_vector, sensible_heat_flux_vector);
   }
   else
   {

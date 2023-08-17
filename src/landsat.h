@@ -17,12 +17,13 @@
 struct Landsat
 {
   int method;
+  int threadNum;
 
   string tal_path;
   string land_cover_path;
   string bands_paths[8];
 
-  Landsat(int method, string bands_paths[], string tal_path, string land_cover_path);
+  Landsat(int method, string bands_paths[], string tal_path, string land_cover_path, int threadNum);
 
   void process_products(MTL mtl, Sensor sensor, Station station);
 };

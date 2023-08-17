@@ -12,6 +12,7 @@ struct Candidate
   int line, col;
   int negative_neighbour;
   double coefficient_variation;
+	double aerodynamic_resistance_past, aerodynamic_resistance_actual;
 
   vector<double> aerodynamic_resistance;
 
@@ -42,6 +43,8 @@ struct Candidate
    * @param  VON_KARMAN: Karman's constant.
    */
   void setAerodynamicResistance(double u200, double A_ZOM, double B_ZOM, double VON_KARMAN);
+
+  void setAerodynamicResistanceCU(double newRah);
 
   /**
    * @brief  Prints the data contained at the struct.

@@ -385,7 +385,7 @@ void aerodynamic_resistance_fuction(vector<double> ustar_line, int width_band, v
     aerodynamic_resistance_line[col] = log(20) / (ustar_line[col] * VON_KARMAN);
 };
 
-void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> pai_vector, vector<vector<double>> &sensible_heat_flux_vector)
+void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threadNum, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> pai_vector, vector<vector<double>> &sensible_heat_flux_vector)
 {
   // ============== COMPUTE INITIAL RAH
 
@@ -422,6 +422,39 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
   }
 
   // ============== COMPUTE FINAL RAH
+
+  /********** ALLOCATING VARIABLES IN DEVICE MEMORY BEGIN **********/
+
+	//Auxiliaries arrays calculation to device
+	double *devZom, *devTS;
+	double *devUstarR, *devUstarW;
+	double *devRahR, *devRahW;
+	double *devA, *devB, *devU10;
+	int *devSize;
+
+	HANDLE_ERROR(cudaMalloc((void** ) &devA, sizeof(double)));
+
+	HANDLE_ERROR(cudaMalloc((void** ) &devB, sizeof(double)));
+
+	HANDLE_ERROR(cudaMalloc((void** ) &devU10, sizeof(double)));
+
+	HANDLE_ERROR(cudaMalloc((void** ) &devSize, sizeof(int)));
+
+	HANDLE_ERROR(cudaMalloc((void** ) &devZom, width_band * sizeof(double)));
+
+	HANDLE_ERROR(cudaMalloc((void** ) &devTS, width_band * sizeof(double)));
+
+	HANDLE_ERROR(cudaMalloc((void** ) &devUstarR, width_band * sizeof(double)));
+
+	HANDLE_ERROR(cudaMalloc((void** ) &devUstarW, width_band * sizeof(double)));
+
+	HANDLE_ERROR(cudaMalloc((void** ) &devRahR, width_band * sizeof(double)));
+
+	HANDLE_ERROR(cudaMalloc((void** ) &devRahW, width_band * sizeof(double)));
+
+	HANDLE_ERROR(cudaMemcpy(devSize, &width_band, sizeof(int), cudaMemcpyHostToDevice));
+
+	/********** ALLOCATING VARIABLES IN DEVICE MEMORY BEGIN **********/
 
   vector<vector<double>> ustar_previous(height_band, vector<double>(width_band));
   vector<vector<double>> aerodynamic_resistance_previous(height_band, vector<double>(width_band));
@@ -465,61 +498,78 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
     double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
     double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
 
+		/********** COPY VARIABLES FROM HOST TO DEVICE MEMORY BEGIN **********/
+		//TODO use constant memory?
+		HANDLE_ERROR(cudaMemcpy(devA, &a, sizeof(double), cudaMemcpyHostToDevice));
+
+		HANDLE_ERROR(cudaMemcpy(devB, &b, sizeof(double), cudaMemcpyHostToDevice));
+
+		HANDLE_ERROR(cudaMemcpy(devU10, &u10, sizeof(double), cudaMemcpyHostToDevice));
+
+		/********** COPY  VARIABLES FROM HOST TO DEVICE MEMORY END **********/
+
     for (int line = 0; line < height_band; line++)
     {
-      for (int col = 0; col < width_band; col++)
-      {
-        double DISP = d0_vector[line][col];
-        double dT_ini_terra = (a + b * (surface_temperature_vector[line][col] - 273.15));
+			/********** COPY HOST TO DEVICE MEMORY BEGIN **********/
 
-        // H_ini_terra
-        sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / aerodynamic_resistance_previous[line][col];
+			HANDLE_ERROR(cudaMemcpy(devTS, &surface_temperature_vector[line], width_band * sizeof(double), cudaMemcpyHostToDevice));
 
-        // L_MB_terra
-        double ustar_pow_3 = ustar_previous[line][col] * ustar_previous[line][col] * ustar_previous[line][col];
-        L[col] = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * sensible_heat_flux_vector[line][col]));
+			HANDLE_ERROR(cudaMemcpy(devZom, &zom_vector[line], width_band * sizeof(double), cudaMemcpyHostToDevice));
 
-        y_01_line[col] = pow((1 - (16 * 0.1) / L[col]), 0.25);
-        y_2_line[col] = pow((1 - (16 * (10 - DISP)) / L[col]), 0.25);
-        x_200_line[col] = pow((1 - (16 * (10 - DISP)) / L[col]), 0.25);
+			HANDLE_ERROR(cudaMemcpy(devUstarR, &ustar_previous[line], width_band * sizeof(double), cudaMemcpyHostToDevice));
 
-        // psi_m200_terra
-        if (L[col] < 0)
-          psi_200_line[col] = 2 * log((1 + x_200_line[col]) / 2) + log((1 + x_200_line[col] * x_200_line[col]) / 2) - 2 * atan(x_200_line[col]) + 0.5 * PI;
-        else
-          psi_200_line[col] = -5 * ((10 - DISP) / L[col]);
+			HANDLE_ERROR(cudaMemcpy(devRahR, &aerodynamic_resistance_previous[line], width_band * sizeof(double), cudaMemcpyHostToDevice));
 
-        // psi_m2_terra
-        if (L[col] < 0)
-          psi_2_line[col] = 2 * log((1 + y_2_line[col] * y_2_line[col]) / 2);
-        else
-          psi_2_line[col] = -5 * ((10 - DISP) / L[col]);
+			/********** COPY HOST TO DEVICE MEMORY END **********/
 
-        // u*
-        double ust = (VON_KARMAN * ustar_previous[line][col]) / (log((10 - DISP) / zom_vector[line][col]) - psi_200_line[col]);
+			/********** KERNEL BEGIN **********/
+			//cudaEventRecord(start, 0);
+			// correctionCycle<<<(width_band + threadNum - 1) / threadNum, threadNum>>>(devTS, devZom, devUstarR, devUstarW, devRahR, devRahW, devA, devB, devU10, devSize);
+			// cudaDeviceSynchronize();
 
-        // rah
-        double zoh_terra = zom_vector[line][col] / pow(exp(1.0), (kb1_vector[line][col]));
-        double temp_rah1_corr_terra = (ust * VON_KARMAN);
-        double temp_rah2_corr_terra = log((10 - DISP) / zom_vector[line][col]) - psi_2_line[col];
-        double temp_rah3_corr_terra = temp_rah1_corr_terra * log(zom_vector[line][col] / zoh_terra);
-        double rah = (temp_rah1_corr_terra * temp_rah2_corr_terra) + temp_rah3_corr_terra;
+			/********** KERNEL END **********/
 
-        ustar_vector[line][col] = ust;
-        aerodynamic_resistance_vector[line][col] = rah;
+			/********** COPY DEVICE TO HOST MEMORY BEGIN **********/
 
-        if (line == hot_pixel.line && col == hot_pixel.col)
-        {
-          hot_pixel.aerodynamic_resistance.push_back(rah);
-        }
+			HANDLE_ERROR(cudaMemcpy(&ustar_vector[line], devUstarW, width_band * sizeof(double), cudaMemcpyDeviceToHost));
 
-        if (line == cold_pixel.line && col == cold_pixel.col)
-        {
-          cold_pixel.aerodynamic_resistance.push_back(rah);
-        }
-      }
+			HANDLE_ERROR(cudaMemcpy(&aerodynamic_resistance_vector[line], devRahW, width_band * sizeof(double), cudaMemcpyDeviceToHost));
+
+			/********** COPY DEVICE TO HOST MEMORY END **********/
+
+      // if (line == hot_pixel.line)
+      // {
+			// 	hot_pixel.setAerodynamicResistanceCU(aerodynamic_resistance_vector[line][hot_pixel.col]);
+      // }
+
+      // if (line == cold_pixel.line)
+      // {
+      //   cold_pixel.setAerodynamicResistanceCU(aerodynamic_resistance_vector[line][cold_pixel.col]);
+      // }
     }
   }
+
+	/********** DE-ALLOCATING VARIABLES IN DEVICE MEMORY BEGIN **********/
+
+	HANDLE_ERROR(cudaFree(devA));
+
+	HANDLE_ERROR(cudaFree(devB));
+
+	HANDLE_ERROR(cudaFree(devU10));
+
+	HANDLE_ERROR(cudaFree(devZom));
+
+	HANDLE_ERROR(cudaFree(devTS));
+
+	HANDLE_ERROR(cudaFree(devUstarR));
+
+	HANDLE_ERROR(cudaFree(devUstarW));
+
+	HANDLE_ERROR(cudaFree(devRahR));
+
+	HANDLE_ERROR(cudaFree(devRahW));
+
+	/********** DE-ALLOCATING VARIABLES IN DEVICE MEMORY BEGIN **********/
 
   // ============== COMPUTE H
 

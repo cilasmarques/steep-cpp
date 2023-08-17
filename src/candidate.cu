@@ -66,6 +66,16 @@ void Candidate::setAerodynamicResistance(double u200, double A_ZOM, double B_ZOM
     this->zom = exp(A_ZOM + B_ZOM * this->ndvi);
     this->ustar = (VON_KARMAN * u200)/log(200/this->zom);
     this->aerodynamic_resistance.push_back(log(20)/(this->ustar * VON_KARMAN));
+    this->aerodynamic_resistance_past = 0;
+}
+
+/**
+ * @brief  Update Pixel's aerodynamic resistance for a new value.
+ * @param  newRah: new value of aerodynamic resistance.
+ */
+void Candidate::setAerodynamicResistanceCU(double newRah){
+	this->aerodynamic_resistance_past = this->aerodynamic_resistance_actual;
+	this->aerodynamic_resistance_actual = newRah;
 }
 
 /**
