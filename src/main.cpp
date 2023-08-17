@@ -60,12 +60,21 @@ int main(int argc, char *argv[])
       noData = atof(noData_flag.substr(5, noData_flag.size()).c_str());
   }
 
-  std::ofstream outputAlbedo("../output.txt"); 
+  std::ofstream outputAlbedo("../timestamp.txt"); 
   std::streambuf* coutAlbedo = std::cout.rdbuf();
   std::cout.rdbuf(outputAlbedo.rdbuf());
 
+	//Timing
+	std::chrono::steady_clock::time_point begin, end;
+	std::chrono::duration< double, std::micro > time_span_us;
+
+	begin = std::chrono::steady_clock::now();
   Landsat landsat = Landsat(method, bands_paths, tal_path, land_cover_path);
   landsat.process_products(mtl, sensor, station);
+	end = std::chrono::steady_clock::now();
+
+	time_span_us = std::chrono::duration_cast< std::chrono::duration<double, std::micro> >(end - begin);
+  std::cout << "TOTAL - DURATION, " << time_span_us.count() << std::endl;
 
   return 0;
 }

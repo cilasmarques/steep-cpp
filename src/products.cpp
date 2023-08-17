@@ -387,8 +387,12 @@ void aerodynamic_resistance_fuction(vector<double> ustar_line, int width_band, v
 
 void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> pai_vector, vector<vector<double>> &sensible_heat_flux_vector)
 {
+  std::chrono::steady_clock::time_point begin, end;
+	std::chrono::duration< double, std::micro > time_span_us;
+
   // ============== COMPUTE INITIAL RAH
 
+	begin = std::chrono::steady_clock::now();
   double ustar_station = (VON_KARMAN * station.v6) / (log(station.WIND_SPEED / station.SURFACE_ROUGHNESS));
   double u10 = (ustar_station / VON_KARMAN) * log(10 / station.SURFACE_ROUGHNESS);
 
@@ -520,6 +524,9 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
       }
     }
   }
+  end = std::chrono::steady_clock::now();
+	time_span_us = std::chrono::duration_cast< std::chrono::duration<double, std::micro> >(end - begin);
+  std::cout << "RAH CYCLE - DURATION, " << time_span_us.count() << std::endl;
 
   // ============== COMPUTE H
 

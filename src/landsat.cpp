@@ -12,6 +12,9 @@ Landsat::Landsat(int method, string bands_paths[], string tal_path, string land_
 
 void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
 {
+  std::chrono::steady_clock::time_point begin, end, phase1_begin, phase2_begin, phase1_end, phase2_end;
+	std::chrono::duration< double, std::micro > time_span_us;
+
   Reader TIFFs_reader = Reader();
 
   TIFF *bands_resampled[8];
@@ -31,10 +34,14 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   TIFFGetField(bands_resampled[1], TIFFTAG_IMAGEWIDTH, &width_band);
   TIFFGetField(bands_resampled[1], TIFFTAG_SAMPLEFORMAT, &sample_bands);
 
-  // Declare auxiliaries arrays
+  // ===== PHASE 1 =====
+
+	phase1_begin = std::chrono::steady_clock::now();
+
+  // ==== INITIAL PRODUCTS
+
   vector<vector<vector<double>>> radiance_vector(height_band, vector<vector<double>>(width_band, vector<double>(8)));
   vector<vector<vector<double>>> reflectance_vector(height_band, vector<vector<double>>(width_band, vector<double>(8)));
-
   vector<vector<double>> albedo_vector(height_band, vector<double>(width_band));
   vector<vector<double>> ndvi_vector(height_band, vector<double>(width_band));
   vector<vector<double>> soil_heat_vector(height_band, vector<double>(width_band));
@@ -84,9 +91,19 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
 
     _TIFFfree(tal_line_buff);
   }
+	phase1_end = std::chrono::steady_clock::now();
+	time_span_us = std::chrono::duration_cast< std::chrono::duration<double, std::micro> >(phase1_end - phase1_begin);
+  std::cout << "PHASE 1 - DURATION, " << time_span_us.count() << std::endl;
 
   TIFFClose(tal);
 
+  // ===== PHASE 2 =====
+
+	phase2_begin = std::chrono::steady_clock::now();
+
+  // ==== PIXEL SELECTION
+
+	begin = std::chrono::steady_clock::now();
   Candidate hot_pixel, cold_pixel;
   if (this->method == 0)
   { // STEEP
@@ -104,16 +121,27 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
     pair<Candidate, Candidate> pixels = getColdHotPixelsESA(ndvi_vector, surface_temperature_vector, albedo_vector, net_radiation_vector, soil_heat_vector, land_cover_tiff, height_band, width_band);
     hot_pixel = pixels.first, cold_pixel = pixels.second;
   }
+  end = std::chrono::steady_clock::now();
+	time_span_us = std::chrono::duration_cast< std::chrono::duration<double, std::micro> >(end - begin);
+  std::cout << "PIXEL SELECTION - DURATION, " << time_span_us.count() << std::endl;
 
+  // ==== RAH CYCLE - COMPUTE H 
+
+	begin = std::chrono::steady_clock::now();
   vector<vector<double>> sensible_heat_flux_vector(height_band, vector<double>(width_band));
   if (this->method == 0)
   { // STEEP
     sensible_heat_function_STEEP(hot_pixel, cold_pixel, station, height_band, width_band, ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, pai_vector, sensible_heat_flux_vector);
   }
   else
-  {
+  { // ASEBAL & ESASEB
     sensible_heat_function_default(hot_pixel, cold_pixel, station, height_band, width_band, ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, sensible_heat_flux_vector);
   }
+  end = std::chrono::steady_clock::now();
+	time_span_us = std::chrono::duration_cast< std::chrono::duration<double, std::micro> >(end - begin);
+  std::cout << "H - DURATION, " << time_span_us.count() << std::endl;
+
+  // ==== FINAL PRODUCTS 
 
   vector<vector<double>> latent_heat_flux_vector(height_band, vector<double>(width_band));
   vector<vector<double>> net_radiation_24h_vector(height_band, vector<double>(width_band));
@@ -123,16 +151,14 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   vector<vector<double>> evapotranspiration_24h_vector(height_band, vector<double>(width_band));
   vector<vector<double>> evapotranspiration_vector(height_band, vector<double>(width_band));
 
-  // Upscalling temporal
   double dr = (1 / mtl.distance_earth_sun) * (1 / mtl.distance_earth_sun);
   double sigma = 0.409 * sin(((2 * PI / 365) * mtl.julian_day) - 1.39);
   double phi = (PI / 180) * station.latitude;
   double omegas = acos(-tan(phi) * tan(sigma));
   double Ra24h = (((24 * 60 / PI) * GSC * dr) * (omegas * sin(phi) * sin(sigma) + cos(phi) * cos(sigma) * sin(omegas))) * (1000000 / 86400.0);
-
-  // Short wave radiation incident in 24 hours (Rs24h)
   double Rs24h = station.INTERNALIZATION_FACTOR * sqrt(station.v7_max - station.v7_min) * Ra24h;
 
+	begin = std::chrono::steady_clock::now();
   for (int line = 0; line < height_band; line++)
   {
     latent_heat_flux_function(net_radiation_vector[line], soil_heat_vector[line], sensible_heat_flux_vector[line], width_band, latent_heat_flux_vector[line]);
@@ -143,6 +169,19 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
     evapotranspiration_24h_function(latent_heat_flux_24h_vector[line], station, width_band, evapotranspiration_24h_vector[line]);
     evapotranspiration_function(net_radiation_24h_vector[line], evapotranspiration_fraction_vector[line], width_band, evapotranspiration_vector[line]);
   }
+  end = std::chrono::steady_clock::now();
+	time_span_us = std::chrono::duration_cast< std::chrono::duration<double, std::micro> >(end - begin);
+  std::cout << "FINAL PRODUCTS - DURATION, " << time_span_us.count() << std::endl;
+
+  phase2_end = std::chrono::steady_clock::now();
+	time_span_us = std::chrono::duration_cast< std::chrono::duration<double, std::micro> >(phase2_end - phase2_begin);
+  std::cout << "PHASE 2 - DURATION, " << time_span_us.count() << std::endl;
+
+  // =====  END + OUTPUTS =====
+
+  std::ofstream outputAlbedo("../products.txt"); 
+  std::streambuf* coutAlbedo = std::cout.rdbuf();
+  std::cout.rdbuf(outputAlbedo.rdbuf());
 
   std::cout << " ==== albedo" << std::endl;
   printVector2x2(albedo_vector);
