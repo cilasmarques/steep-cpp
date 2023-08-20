@@ -15,14 +15,15 @@ void radiance_function(TIFF **bands_resampled, uint32 width_band, uint16 sample_
 
     for (int col = 0; col < width_band; col++)
     {
+      double radiance_pixel = NaN;
       double band_pixel = pixel_reader.read_tiff_pixel(col);
 
-      // TODO: deixar apenas o else (?)
-      double radiance_pixel = NaN;
-      if (mtl.number_sensor == 8)
-        radiance_pixel = max(band_pixel * mtl.rad_mult_10 + mtl.rad_add_10, 0.0);
-      else
-        radiance_pixel = max(band_pixel * sensor.parameters[i_band][sensor.GRESCALE] + sensor.parameters[i_band][sensor.BRESCALE], 0.0);
+      if (band_pixel > 0) {
+      // if (mtl.number_sensor == 8)
+      //   radiance_pixel = band_pixel * mtl.rad_mult_10 + mtl.rad_add_10;
+      // else
+        radiance_pixel = band_pixel * sensor.parameters[i_band][sensor.GRESCALE] + sensor.parameters[i_band][sensor.BRESCALE];
+      }
 
       radiance_line[col][i_band] = radiance_pixel;
     }
@@ -44,14 +45,17 @@ void reflectance_function(TIFF **bands_resampled, uint32 width_band, uint16 samp
 
     for (int col = 0; col < width_band; col++)
     {
-      double band_pixel = pixel_reader.read_tiff_pixel(col);
-      double radiance_pixel = band_pixel * sensor.parameters[i_band][sensor.GRESCALE] + sensor.parameters[i_band][sensor.BRESCALE];
-
       double reflectance_pixel = NaN;
-      if (mtl.number_sensor == 8)
-        reflectance_pixel = radiance_pixel / sin(mtl.sun_elevation * PI / 180);
-      else
-        reflectance_pixel = (PI * radiance_pixel * mtl.distance_earth_sun * mtl.distance_earth_sun) / (sensor.parameters[i_band][sensor.ESUN] * sin(mtl.sun_elevation * PI / 180));
+      double band_pixel = pixel_reader.read_tiff_pixel(col);
+
+      if (band_pixel > 0) {
+        double radiance_pixel = band_pixel * sensor.parameters[i_band][sensor.GRESCALE] + sensor.parameters[i_band][sensor.BRESCALE];
+
+        if (mtl.number_sensor == 8)
+          reflectance_pixel = radiance_pixel / sin(mtl.sun_elevation * PI / 180);
+        else
+          reflectance_pixel = (PI * radiance_pixel * mtl.distance_earth_sun * mtl.distance_earth_sun) / (sensor.parameters[i_band][sensor.ESUN] * sin(mtl.sun_elevation * PI / 180));
+      }
 
       reflectance_line[col][i_band] = reflectance_pixel;
     }
