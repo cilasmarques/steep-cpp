@@ -430,7 +430,9 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
 	double *devUstarR, *devUstarW;
 	double *devRahR, *devRahW;
 	double *devA, *devB, *devU10;
+  double *devD0, *devKB1;
 	int *devSize;
+  size_t pitch;
 
 	HANDLE_ERROR(cudaMalloc((void** ) &devA, sizeof(double)));
 
@@ -441,6 +443,10 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
 	HANDLE_ERROR(cudaMalloc((void** ) &devSize, sizeof(int)));
 
 	HANDLE_ERROR(cudaMalloc((void** ) &devZom, width_band * sizeof(double)));
+
+	HANDLE_ERROR(cudaMalloc((void** ) &devD0, width_band * sizeof(double)));
+
+	HANDLE_ERROR(cudaMalloc((void** ) &devKB1, width_band * sizeof(double)));
 
 	HANDLE_ERROR(cudaMalloc((void** ) &devTS, width_band * sizeof(double)));
 
@@ -512,40 +518,50 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
     {
 			/********** COPY HOST TO DEVICE MEMORY BEGIN **********/
 
-			HANDLE_ERROR(cudaMemcpy(devTS, &surface_temperature_vector[line], width_band * sizeof(double), cudaMemcpyHostToDevice));
+      HANDLE_ERROR(cudaMallocPitch(&devTS, &pitch, surface_temperature_vector[line].size() * sizeof(double), 1));
+      HANDLE_ERROR(cudaMemcpy2D(devTS, pitch, &surface_temperature_vector[line][0], surface_temperature_vector[line].size() * sizeof(double), surface_temperature_vector[line].size() * sizeof(double), 1, cudaMemcpyHostToDevice));
 
-			HANDLE_ERROR(cudaMemcpy(devZom, &zom_vector[line], width_band * sizeof(double), cudaMemcpyHostToDevice));
+      HANDLE_ERROR(cudaMallocPitch(&devZom, &pitch, zom_vector[line].size() * sizeof(double), 1));
+      HANDLE_ERROR(cudaMemcpy2D(devZom, pitch, &zom_vector[line][0], zom_vector[line].size() * sizeof(double), zom_vector[line].size() * sizeof(double), 1, cudaMemcpyHostToDevice));
 
-			HANDLE_ERROR(cudaMemcpy(devUstarR, &ustar_previous[line], width_band * sizeof(double), cudaMemcpyHostToDevice));
+      HANDLE_ERROR(cudaMallocPitch(&devD0, &pitch, d0_vector[line].size() * sizeof(double), 1));
+      HANDLE_ERROR(cudaMemcpy2D(devD0, pitch, &d0_vector[line][0], d0_vector[line].size() * sizeof(double), d0_vector[line].size() * sizeof(double), 1, cudaMemcpyHostToDevice));
 
-			HANDLE_ERROR(cudaMemcpy(devRahR, &aerodynamic_resistance_previous[line], width_band * sizeof(double), cudaMemcpyHostToDevice));
+      HANDLE_ERROR(cudaMallocPitch(&devKB1, &pitch, kb1_vector[line].size() * sizeof(double), 1));
+      HANDLE_ERROR(cudaMemcpy2D(devKB1, pitch, &kb1_vector[line][0], kb1_vector[line].size() * sizeof(double), kb1_vector[line].size() * sizeof(double), 1, cudaMemcpyHostToDevice));
+
+      HANDLE_ERROR(cudaMallocPitch(&devUstarR, &pitch, ustar_previous[line].size() * sizeof(double), 1));
+      HANDLE_ERROR(cudaMemcpy2D(devUstarR, pitch, &ustar_previous[line][0], ustar_previous[line].size() * sizeof(double), ustar_previous[line].size() * sizeof(double), 1, cudaMemcpyHostToDevice));
+
+      HANDLE_ERROR(cudaMallocPitch(&devRahR, &pitch, aerodynamic_resistance_previous[line].size() * sizeof(double), 1));
+      HANDLE_ERROR(cudaMemcpy2D(devRahR, pitch, &aerodynamic_resistance_previous[line][0], aerodynamic_resistance_previous[line].size() * sizeof(double), aerodynamic_resistance_previous[line].size() * sizeof(double), 1, cudaMemcpyHostToDevice));
 
 			/********** COPY HOST TO DEVICE MEMORY END **********/
 
 			/********** KERNEL BEGIN **********/
 			//cudaEventRecord(start, 0);
-			// correctionCycle<<<(width_band + threadNum - 1) / threadNum, threadNum>>>(devTS, devZom, devUstarR, devUstarW, devRahR, devRahW, devA, devB, devU10, devSize);
-			// cudaDeviceSynchronize();
+			correctionCycleSTEEP<<<(width_band + threadNum - 1) / threadNum, threadNum>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devA, devB, devU10, devSize);
+			cudaDeviceSynchronize();
 
 			/********** KERNEL END **********/
 
 			/********** COPY DEVICE TO HOST MEMORY BEGIN **********/
 
-			HANDLE_ERROR(cudaMemcpy(&ustar_vector[line], devUstarW, width_band * sizeof(double), cudaMemcpyDeviceToHost));
+      HANDLE_ERROR(cudaMemcpy2D(&ustar_vector[line][0], ustar_vector[line].size() * sizeof(double), devUstarW, pitch, ustar_vector[line].size() * sizeof(double), 1, cudaMemcpyDeviceToHost));
 
-			HANDLE_ERROR(cudaMemcpy(&aerodynamic_resistance_vector[line], devRahW, width_band * sizeof(double), cudaMemcpyDeviceToHost));
-
+      HANDLE_ERROR(cudaMemcpy2D(&aerodynamic_resistance_vector[line][0], aerodynamic_resistance_vector[line].size() * sizeof(double), devRahW, pitch, aerodynamic_resistance_vector[line].size() * sizeof(double), 1, cudaMemcpyDeviceToHost));
+      
 			/********** COPY DEVICE TO HOST MEMORY END **********/
 
-      // if (line == hot_pixel.line)
-      // {
-			// 	hot_pixel.setAerodynamicResistanceCU(aerodynamic_resistance_vector[line][hot_pixel.col]);
-      // }
+      if (line == hot_pixel.line)
+      {
+				hot_pixel.setAerodynamicResistanceCU(aerodynamic_resistance_vector[line][hot_pixel.col]);
+      }
 
-      // if (line == cold_pixel.line)
-      // {
-      //   cold_pixel.setAerodynamicResistanceCU(aerodynamic_resistance_vector[line][cold_pixel.col]);
-      // }
+      if (line == cold_pixel.line)
+      {
+        cold_pixel.setAerodynamicResistanceCU(aerodynamic_resistance_vector[line][cold_pixel.col]);
+      }
     }
   }
 
