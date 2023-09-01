@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
   }
 
   // load threads number value
- 	int threadNum = 16;
+ 	int threadNum = 2;
 
   std::ofstream outputAlbedo("../output.txt"); 
   std::streambuf* coutAlbedo = std::cout.rdbuf();

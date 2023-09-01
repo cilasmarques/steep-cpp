@@ -46,7 +46,7 @@ __global__ void correctionCycleSTEEP(double *surfaceTemperatureLine, double *d0L
   while (pos < *size)
   {
     double DISP = d0Line[pos];
-    double dT_ini_terra = *a + *b * (surfaceTemperatureLine[pos] - 273.15);
+    double dT_ini_terra = *a + *b * (surfaceTemperatureLine[pos] - 273.15);    
 
     double sensibleHeatFlux = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / rahRLine[pos];
 

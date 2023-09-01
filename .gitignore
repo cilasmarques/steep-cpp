@@ -1,5 +1,6 @@
 #io data
 output/*
+*.txt
 
 # Prerequisites
 *.d
