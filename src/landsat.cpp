@@ -179,43 +179,43 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
 
   // =====  END + OUTPUTS =====
 
-  //std::ofstream outputAlbedo("../products.txt"); 
-  //std::streambuf* coutAlbedo = std::cout.rdbuf();
-  //std::cout.rdbuf(outputAlbedo.rdbuf());
+  std::ofstream outputProds("./output/products.txt"); 
+  std::streambuf* coutProds = std::cout.rdbuf();
+  std::cout.rdbuf(outputProds.rdbuf());
 
-  //std::cout << " ==== albedo" << std::endl;
-  //printVector2x2(albedo_vector);
+  std::cout << " ==== albedo" << std::endl;
+  printVector2x2(albedo_vector);
 
-  //std::cout << " ==== ndvi" << std::endl;
-  //printVector2x2(ndvi_vector);
+  std::cout << " ==== ndvi" << std::endl;
+  printVector2x2(ndvi_vector);
 
-  //std::cout << " ==== net_radiation" << std::endl;
-  //printVector2x2(net_radiation_vector);
+  std::cout << " ==== net_radiation" << std::endl;
+  printVector2x2(net_radiation_vector);
 
-  //std::cout << " ==== soil_heat" << std::endl;
-  //printVector2x2(soil_heat_vector);
+  std::cout << " ==== soil_heat" << std::endl;
+  printVector2x2(soil_heat_vector);
 
-  //std::cout << " ==== sensible_heat_flux" << std::endl;
-  //printVector2x2(sensible_heat_flux_vector);
+  std::cout << " ==== sensible_heat_flux" << std::endl;
+  printVector2x2(sensible_heat_flux_vector);
 
-  //std::cout << " ==== latent_heat_flux" << std::endl;
-  //printVector2x2(latent_heat_flux_vector);
+  std::cout << " ==== latent_heat_flux" << std::endl;
+  printVector2x2(latent_heat_flux_vector);
 
-  //std::cout << " ==== net_radiation_24h" << std::endl;
-  //printVector2x2(net_radiation_24h_vector);
+  std::cout << " ==== net_radiation_24h" << std::endl;
+  printVector2x2(net_radiation_24h_vector);
 
-  //std::cout << " ==== evapotranspiration_fraction" << std::endl;
-  //printVector2x2(evapotranspiration_fraction_vector);
+  std::cout << " ==== evapotranspiration_fraction" << std::endl;
+  printVector2x2(evapotranspiration_fraction_vector);
 
-  //std::cout << " ==== sensible_heat_flux_24h" << std::endl;
-  //printVector2x2(sensible_heat_flux_24h_vector);
+  std::cout << " ==== sensible_heat_flux_24h" << std::endl;
+  printVector2x2(sensible_heat_flux_24h_vector);
 
-  //std::cout << " ==== latent_heat_flux_24h" << std::endl;
-  //printVector2x2(latent_heat_flux_24h_vector);
+  std::cout << " ==== latent_heat_flux_24h" << std::endl;
+  printVector2x2(latent_heat_flux_24h_vector);
 
-  //std::cout << " ==== evapotranspiration_24h" << std::endl;
-  //printVector2x2(evapotranspiration_24h_vector);
+  std::cout << " ==== evapotranspiration_24h" << std::endl;
+  printVector2x2(evapotranspiration_24h_vector);
 
-  //std::cout << " ==== evapotranspiration" << std::endl;
-  //printVector2x2(evapotranspiration_vector);
+  std::cout << " ==== evapotranspiration" << std::endl;
+  printVector2x2(evapotranspiration_vector);
 };

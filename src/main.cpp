@@ -60,9 +60,9 @@ int main(int argc, char *argv[])
       noData = atof(noData_flag.substr(5, noData_flag.size()).c_str());
   }
 
-  //std::ofstream outputAlbedo("../output/timestamp.txt"); 
-  //std::streambuf* coutAlbedo = std::cout.rdbuf();
-  //std::cout.rdbuf(outputAlbedo.rdbuf());
+  std::ofstream outputTime("./output/timestamp.txt"); 
+  std::streambuf* coutTime = std::cout.rdbuf();
+  std::cout.rdbuf(outputTime.rdbuf());
 
   //Timing
   std::chrono::steady_clock::time_point begin, end;
