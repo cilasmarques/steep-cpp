@@ -99,8 +99,17 @@ int main(int argc, char *argv[])
   double albedo_matriz[height_band][width_band];
   int final_tif_calc = mtl.number_sensor == 8 ? 6 : 7;
 
+  string tal_path = argv[INPUT_BAND_TAL_INDEX];
+  TIFF *tal = TIFFOpen(tal_path.c_str(), "rm");
+
+  tdata_t tal_line_buff = _TIFFmalloc(TIFFScanlineSize(tal));
+  unsigned short curr_tal_line_size = TIFFScanlineSize(tal) / width_band;
+  PixelReader tal_reader = PixelReader(sample_bands, curr_tal_line_size, tal_line_buff);
+
   std::cout << " ==== albedo" << std::endl;
   for(int line = 0; line < height_band; line++){ 
+    TIFFReadScanline(tal, tal_line_buff, line);
+
     for (int col = 0; col < width_band; col++) {
 
       double alb = 0;
@@ -112,13 +121,18 @@ int main(int argc, char *argv[])
             reflectance_matriz[5][line][col] * sensor.parameters[5][sensor.WB] +
             reflectance_matriz[final_tif_calc][line][col] * sensor.parameters[final_tif_calc][sensor.WB];
       }
+
+      alb = (alb - 0.03) / (tal_reader.read_pixel(col) * tal_reader.read_pixel(col));
+
       albedo_matriz[line][col] = alb;
 
       std::cout << alb << " ";
     }
+
    std::cout << std::endl;
   }
-
+  _TIFFfree(tal_line_buff);
+  TIFFClose(tal);
 
   // ================= COMPUTE NDVI
 
