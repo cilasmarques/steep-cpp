@@ -413,10 +413,10 @@ int main(int argc, char *argv[])
 
   // Auxiliaries arrays calculation
   double L[width_band];
-  double sensible_heat_flux_line[width_band];
   double y_01_line[width_band], y_2_line[width_band], x_200_line[width_band];
   double psi_01_line[width_band], psi_2_line[width_band], psi_200_line[width_band];
 
+  double sensible_heat_flux_matriz[height_band][35];
   std::vector<double> ustar_write_line, aerodynamic_resistance_write_line;
   std::vector<std::vector<double>> ustar_previous, aerodynamic_resistance_previous;
 
@@ -472,11 +472,11 @@ int main(int argc, char *argv[])
         double dT_ini_terra = (a + b * (surface_temperature_vector[line][col] - 273.15));
         
         // H_ini_terra
-        sensible_heat_flux_line[col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / aerodynamic_resistance_previous[line][col]; 
+        sensible_heat_flux_matriz[line][col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / aerodynamic_resistance_previous[line][col]; 
 
         // L_MB_terra
         double ustar_pow_3 = ustar_previous[line][col] * ustar_previous[line][col] * ustar_previous[line][col];
-        L[col] = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * sensible_heat_flux_line[col]));
+        L[col] = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * sensible_heat_flux_matriz[line][col]));
 
         y_01_line[col] = pow((1 - (16 * 0.1) / L[col]), 0.25);
         y_2_line[col] = pow((1 - (16 * (10 - DISP)) / L[col]), 0.25);
@@ -518,7 +518,7 @@ int main(int argc, char *argv[])
           cold_pixel.aerodynamic_resistance.push_back(rah_aux_cold);
         }
 
-        std::cout << sensible_heat_flux_line[col] << " ";
+        std::cout << sensible_heat_flux_matriz[line][col] << " ";
       }
       std::cout << std::endl;
 
@@ -546,13 +546,13 @@ int main(int argc, char *argv[])
   // Sensible heat flux H
   for (int line = 0; line < height_band; line++) {
     for (int col = 0; col < width_band; col++) {
-      sensible_heat_flux_line[col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (surface_temperature_vector[line][col] - 273.15)) / aerodynamic_resistance_vector[line][col];
+      sensible_heat_flux_matriz[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (surface_temperature_vector[line][col] - 273.15)) / aerodynamic_resistance_vector[line][col];
 
-      if (!isnan(sensible_heat_flux_line[col]) && sensible_heat_flux_line[col] > (net_radiation_vector[line][col] - soil_heat_vector[line][col])) {
-        sensible_heat_flux_line[col] = net_radiation_vector[line][col] - soil_heat_vector[line][col];
+      if (!isnan(sensible_heat_flux_matriz[line][col]) && sensible_heat_flux_matriz[line][col] > (net_radiation_vector[line][col] - soil_heat_vector[line][col])) {
+        sensible_heat_flux_matriz[line][col] = net_radiation_vector[line][col] - soil_heat_vector[line][col];
       }
 
-      std::cout << sensible_heat_flux_line[col] << " ";
+      std::cout << sensible_heat_flux_matriz[line][col] << " ";
     }
     std::cout << std::endl;
   }
@@ -579,7 +579,7 @@ int main(int argc, char *argv[])
   
   // Latent heat flux LE & Compute evapotranspiration
   for(int line = 0; line < height_band; line++){
-      latent_heat_flux_function(net_radiation_matriz[line], G_matriz[line], sensible_heat_flux_line, width_band, latent_heat_flux_matriz[line]);
+      latent_heat_flux_function(net_radiation_matriz[line], G_matriz[line], sensible_heat_flux_matriz[line], width_band, latent_heat_flux_matriz[line]);
       net_radiation_24h_function(albedo_matriz[line], Ra24h, Rs24h, width_band, net_radiation_24h_matriz[line]);
       evapotranspiration_fraction_fuction(latent_heat_flux_matriz[line], net_radiation_matriz[line], G_matriz[line], width_band, evapotranspiration_fraction_matriz[line]);
       sensible_heat_flux_24h_fuction(evapotranspiration_fraction_matriz[line], net_radiation_24h_matriz[line], width_band, sensible_heat_flux_24h_matriz[line]);
