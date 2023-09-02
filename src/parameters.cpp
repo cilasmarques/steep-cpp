@@ -86,16 +86,16 @@ Sensor::Sensor(int number_sensor, int year){
 string Sensor::capture_parameter_path(int number_sensor, int year){
     switch(number_sensor){
         case 8:
-            return "./parameters/LC.data";
+            return "./src/parameters/LC.data";
             break;
         case 7:
-            return "./parameters/ETM.data";
+            return "./src/parameters/ETM.data";
             break;
         case 5:
             if(year < 1992)
-                return "./parameters/TM1.data";
+                return "./src/parameters/TM1.data";
             else
-                return "./parameters/TM2.data";
+                return "./src/parameters/TM2.data";
             break;
         default:
             cerr << "Sensor problem" << endl;

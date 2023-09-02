@@ -25,6 +25,10 @@ int main(int argc, char *argv[])
   // const int INPUT_NAN_VALUE_INDEX = 14;
 
 
+  std::ofstream output("./output/products.txt"); 
+  std::streambuf* coutOutput = std::cout.rdbuf();
+  std::cout.rdbuf(output.rdbuf());
+
   // ================= LOAD DATA
 
   //load meta data
@@ -60,10 +64,6 @@ int main(int argc, char *argv[])
   double radiance_matriz[8][height_band][width_band];
   double reflectance_matriz[8][height_band][width_band];
 
-  std::ofstream outputReflectance("../out_data_txt/reflectance.txt"); 
-  std::streambuf* coutReflectance = std::cout.rdbuf();
-  std::cout.rdbuf(outputReflectance.rdbuf());
-
   for (int i = 1; i < 8; i++) {
     string path_tiff_band = argv[i];
     TIFF *curr_band = TIFFOpen(path_tiff_band.c_str(), "rm");
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     unsigned short curr_band_byte_size = TIFFScanlineSize(curr_band) / width_band;
     PixelReader curr_band_pixel_read = PixelReader(sample_bands, curr_band_byte_size, curr_band_line_buff);
 
-    std::cout << "reflectance - band " << i << std::endl;
+    std::cout << " ==== reflectance - band " << i << std::endl;
     for(int line = 0; line < height_band; line++){
         TIFFReadScanline(curr_band, curr_band_line_buff, line);
 
@@ -97,12 +97,9 @@ int main(int argc, char *argv[])
   // ================= COMPUTE ALBEDO
 
   double albedo_matriz[height_band][width_band];
+  int final_tif_calc = mtl.number_sensor == 8 ? 6 : 7;
 
-  std::ofstream outputAlbedo("../out_data_txt/albedo.txt"); 
-  std::streambuf* coutAlbedo = std::cout.rdbuf();
-  std::cout.rdbuf(outputAlbedo.rdbuf());
-
-  std::cout << "albedo" << std::endl;
+  std::cout << " ==== albedo" << std::endl;
   for(int line = 0; line < height_band; line++){ 
     for (int col = 0; col < width_band; col++) {
 
@@ -113,7 +110,7 @@ int main(int argc, char *argv[])
             reflectance_matriz[3][line][col] * sensor.parameters[3][sensor.WB] +
             reflectance_matriz[4][line][col] * sensor.parameters[4][sensor.WB] +
             reflectance_matriz[5][line][col] * sensor.parameters[5][sensor.WB] +
-            reflectance_matriz[7][line][col] * sensor.parameters[7][sensor.WB];
+            reflectance_matriz[final_tif_calc][line][col] * sensor.parameters[final_tif_calc][sensor.WB];
       }
       albedo_matriz[line][col] = alb;
 
@@ -127,11 +124,7 @@ int main(int argc, char *argv[])
 
   double ndvi_matriz[height_band][width_band];
 
-  std::ofstream outputNDVI("../out_data_txt/ndvi.txt"); 
-  std::streambuf* coutNDVI = std::cout.rdbuf();
-  std::cout.rdbuf(outputNDVI.rdbuf());
-
-  std::cout << "NDVI" << std::endl;
+  std::cout << " ==== NDVI" << std::endl;
   for(int line = 0; line < height_band; line++){ 
     for (int col = 0; col < width_band; col++) {
       double ndvi = (reflectance_matriz[4][line][col] - reflectance_matriz[3][line][col]) / (reflectance_matriz[4][line][col] + reflectance_matriz[3][line][col]);
@@ -146,11 +139,7 @@ int main(int argc, char *argv[])
 
   double lai_matriz[height_band][width_band];
 
-  std::ofstream outputLAI("../out_data_txt/lai.txt"); 
-  std::streambuf* coutLAI = std::cout.rdbuf();
-  std::cout.rdbuf(outputLAI.rdbuf());
-
-  std::cout << "LAI" << std::endl;
+  std::cout << " ==== LAI" << std::endl;
   for(int line = 0; line < height_band; line++){ 
     double savi_line[width_band];
     double L = 0.05;
@@ -177,11 +166,7 @@ int main(int argc, char *argv[])
 
   double pai_matriz[height_band][width_band];
 
-  std::ofstream outputPAI("../out_data_txt/pai.txt"); 
-  std::streambuf* coutPAI = std::cout.rdbuf();
-  std::cout.rdbuf(outputPAI.rdbuf());
-
-  std::cout << "PAI" << std::endl;
+  std::cout << " ==== PAI" << std::endl;
   for(int line = 0; line < height_band; line++){ 
     for (int col = 0; col < width_band; col++){
       double pai_value = 10.1 * (reflectance_matriz[4][line][col] - sqrt(reflectance_matriz[3][line][col])) + 3.1;
@@ -223,11 +208,7 @@ int main(int argc, char *argv[])
           exit(6);
   }
 
-  std::ofstream outputSurfaceTemp("../out_data_txt/surface_temperature.txt"); 
-  std::streambuf* coutSurfaceTemp = std::cout.rdbuf();
-  std::cout.rdbuf(outputSurfaceTemp.rdbuf());
-
-  std::cout << "surface_temperature" << std::endl;
+  std::cout << " ==== surface_temperature" << std::endl;
   for(int line = 0; line < height_band; line++){ 
 
     int radiance_number = (mtl.number_sensor == 5)? 6: 7;
@@ -267,10 +248,7 @@ int main(int argc, char *argv[])
   double temperature_kelvin = station.temperature_image + 273.15;
   double temperature_kelvin_pow_4 = temperature_kelvin * temperature_kelvin * temperature_kelvin * temperature_kelvin;
 
-  std::ofstream outputRN("../out_data_txt/RN.txt"); 
-  std::streambuf* coutRN = std::cout.rdbuf();
-  std::cout.rdbuf(outputRN.rdbuf());
-  std::cout << "RN" << std::endl;
+  std::cout << " ==== RN" << std::endl;
   for(int line = 0; line < height_band; line++){ 
     TIFFReadScanline(band_tal, tal_band_line_buff, line);
 
@@ -310,11 +288,7 @@ int main(int argc, char *argv[])
 
   double G_matriz[height_band][width_band];
 
-  std::ofstream outputG("../out_data_txt/G.txt"); 
-  std::streambuf* coutG = std::cout.rdbuf();
-  std::cout.rdbuf(outputG.rdbuf());
-
-  std::cout << "G - soil heat flux" << std::endl;
+  std::cout << " ==== G - soil heat flux" << std::endl;
   for(int line = 0; line < height_band; line++){ 
     for (int col = 0; col < width_band; col++)
     {
@@ -420,29 +394,19 @@ int main(int argc, char *argv[])
   std::vector<std::vector<double>> kb1_vector = arrayToVector(kb1_matriz, height_band, width_band);
   std::vector<std::vector<double>> aerodynamic_resistance_vector = arrayToVector(aerodynamic_resistance_matriz, height_band, width_band);
 
-  std::ofstream outputD0("../out_data_txt/D0.txt"); 
-  std::streambuf* coutD0 = std::cout.rdbuf();
-  std::cout.rdbuf(outputD0.rdbuf());
+  std::cout << " ==== d0" << std::endl;
   printVector2x2(d0_vector);
 
-  std::ofstream outputZOM("../out_data_txt/ZOM.txt"); 
-  std::streambuf* coutZOM = std::cout.rdbuf();
-  std::cout.rdbuf(outputZOM.rdbuf());
+  std::cout << " ==== zom" << std::endl;
   printVector2x2(zom_vector);
 
-  std::ofstream outputUSTAR("../out_data_txt/USTAR.txt"); 
-  std::streambuf* coutUSTAR = std::cout.rdbuf();
-  std::cout.rdbuf(outputUSTAR.rdbuf());
+  std::cout << " ==== ustar" << std::endl;
   printVector2x2(ustar_vector);
 
-  std::ofstream outputKB1("../out_data_txt/KB1.txt"); 
-  std::streambuf* coutKB1 = std::cout.rdbuf();
-  std::cout.rdbuf(outputKB1.rdbuf());
+  std::cout << " ==== kb1" << std::endl;
   printVector2x2(kb1_vector);
 
-  std::ofstream outputRAH_INI("../out_data_txt/RAH_INI.txt"); 
-  std::streambuf* coutRAH_INI = std::cout.rdbuf();
-  std::cout.rdbuf(outputRAH_INI.rdbuf());
+  std::cout << " ==== rah" << std::endl;
   printVector2x2(aerodynamic_resistance_vector);
 
   // ============== CALCULO DO CICLO RAH FINAL
@@ -477,11 +441,6 @@ int main(int argc, char *argv[])
   double rah_ini_pq_terra;
   double rah_ini_pf_terra;
 
-  std::ofstream outputH_INI("../out_data_txt/PSI200_INI.txt"); 
-  std::streambuf* coutH_INI = std::cout.rdbuf();
-  std::cout.rdbuf(outputH_INI.rdbuf());
-
-
   for (int i = 0; i < 2; i++)
   {
     ustar_previous = ustar_vector;                                    //aux
@@ -504,6 +463,7 @@ int main(int argc, char *argv[])
     double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
     double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));        
 
+    std::cout << " ==== H ini " << i << std::endl;
     for (int line = 0; line < height_band; line++)
     {
       for (int col = 0; col < width_band; col++)
@@ -558,9 +518,8 @@ int main(int argc, char *argv[])
           cold_pixel.aerodynamic_resistance.push_back(rah_aux_cold);
         }
 
-        std::cout << psi_200_line[col] << " ";
+        std::cout << sensible_heat_flux_line[col] << " ";
       }
-
       std::cout << std::endl;
 
       ustar_vector[line] = ustar_write_line;
@@ -569,20 +528,9 @@ int main(int argc, char *argv[])
       ustar_write_line.clear();
       aerodynamic_resistance_write_line.clear();
     }
-
-
-    std::cout << " bbbbbbbbbbbbb " << std::endl << std::endl << std::endl << std::endl << std::endl ;
-
-    //     #Error rah
-    // rah_dif_terra =  rah_ini_terra.subtract(rah_corr_terra)
-    // rah_dif_terra = ee.Algorithms.If(rah_dif_terra.lt(0), rah_dif_terra.multiply(-1), rah_dif_terra )
-    // rah_dif_terra = img_1.multiply(rah_dif_terra)
-    // teste_rah_terra = rah_dif_terra.multiply(100).divide(rah_corr_terra)
   }
 
-  std::ofstream outputRAH_FINAL("../out_data_txt/RAH_FINAL.txt"); 
-  std::streambuf* coutRAH_FINAL = std::cout.rdbuf();
-  std::cout.rdbuf(outputRAH_FINAL.rdbuf());
+  std::cout << " ==== rah final" << std::endl;
   printVector2x2(aerodynamic_resistance_vector);
 
 
@@ -594,11 +542,8 @@ int main(int argc, char *argv[])
   double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
   double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
 
-  std::ofstream outputH("../out_data_txt/H.txt"); 
-  std::streambuf* coutH = std::cout.rdbuf();
-  std::cout.rdbuf(outputH.rdbuf());
-
-  // Sensible hear flux H
+  std::cout << " ==== H final" << std::endl;
+  // Sensible heat flux H
   for (int line = 0; line < height_band; line++) {
     for (int col = 0; col < width_band; col++) {
       sensible_heat_flux_line[col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (surface_temperature_vector[line][col] - 273.15)) / aerodynamic_resistance_vector[line][col];
@@ -651,41 +596,26 @@ int main(int argc, char *argv[])
   std::vector<std::vector<double>> evapotranspiration_24h_vector = arrayToVector(evapotranspiration_24h_matriz, height_band, width_band);
   std::vector<std::vector<double>> evapotranspiration_ulisses_vector = arrayToVector(evapotranspiration_ulisses_matriz, height_band, width_band);
 
-  std::ofstream outputLE("../out_data_txt/LE.txt"); 
-  std::streambuf* coutLE = std::cout.rdbuf();
-  std::cout.rdbuf(outputLE.rdbuf());
+  std::cout << " ==== LE" << std::endl;
   printVector2x2(latent_heat_flux_vector);
 
-  std::ofstream outputRN24("../out_data_txt/RN24.txt"); 
-  std::streambuf* coutRN24 = std::cout.rdbuf();
-  std::cout.rdbuf(outputRN24.rdbuf());
+  std::cout << " ==== Rn24" << std::endl;
   printVector2x2(net_radiation_24h_vector);
 
-  std::ofstream outputET_FRAC("../out_data_txt/ET_FRAC.txt"); 
-  std::streambuf* coutET_FRAC = std::cout.rdbuf();
-  std::cout.rdbuf(outputET_FRAC.rdbuf());
+  std::cout << " ==== evapotranspiration_fraction" << std::endl;
   printVector2x2(evapotranspiration_fraction_vector);
 
-  std::ofstream outputH24("../out_data_txt/H24.txt"); 
-  std::streambuf* coutH24 = std::cout.rdbuf();
-  std::cout.rdbuf(outputH24.rdbuf());
+  std::cout << " ==== H24" << std::endl;
   printVector2x2(sensible_heat_flux_24h_vector);
 
-  std::ofstream outputRAH_LE24("../out_data_txt/LE24.txt"); 
-  std::streambuf* coutRAH_LE24 = std::cout.rdbuf();
-  std::cout.rdbuf(outputRAH_LE24.rdbuf());
+  std::cout << " ==== LE24" << std::endl;
   printVector2x2(latent_heat_flux_24h_vector);
 
-  std::ofstream outputRAH_ET24("../out_data_txt/ET24.txt"); 
-  std::streambuf* coutRAH_ET24 = std::cout.rdbuf();
-  std::cout.rdbuf(outputRAH_ET24.rdbuf());
+  std::cout << " ==== ET24" << std::endl;
   printVector2x2(evapotranspiration_24h_vector);
 
-  std::ofstream outputRAH_ET242("../out_data_txt/ET_ULISSES.txt"); 
-  std::streambuf* coutRAH_ET242 = std::cout.rdbuf();
-  std::cout.rdbuf(outputRAH_ET242.rdbuf());
+  std::cout << " ==== ET" << std::endl;
   printVector2x2(evapotranspiration_ulisses_vector);
-
 
   return 0;
 }
