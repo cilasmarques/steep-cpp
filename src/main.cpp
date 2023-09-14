@@ -65,16 +65,23 @@ int main(int argc, char *argv[])
   std::cout.rdbuf(outputTime.rdbuf());
 
   //Timing
-  std::chrono::steady_clock::time_point begin, end;
-  std::chrono::duration< double, std::micro > time_span_us;
+  using namespace std::chrono;
+  int64_t initial_time, final_time, general_time;
+  system_clock::time_point begin, end;
 
-  begin = std::chrono::steady_clock::now();
+  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  std::cout << "INITIAL, " << initial_time << std::endl;
+
+  begin = system_clock::now();
   Landsat landsat = Landsat(method, bands_paths, tal_path, land_cover_path);
   landsat.process_products(mtl, sensor, station);
-  end = std::chrono::steady_clock::now();
+  end = system_clock::now();
 
-  time_span_us = std::chrono::duration_cast< std::chrono::duration<double, std::micro> >(end - begin);
-  std::cout << "TOTAL - DURATION, " << time_span_us.count() << std::endl;
+  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  std::cout << "FINAL, " << final_time << std::endl;
+
+  general_time = duration_cast<milliseconds>(end.time_since_epoch() - begin.time_since_epoch()).count();
+  std::cout << "TOTAL - DURATION, " << general_time << std::endl;
 
   return 0;
 }
