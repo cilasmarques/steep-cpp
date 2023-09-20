@@ -60,28 +60,23 @@ int main(int argc, char *argv[])
       noData = atof(noData_flag.substr(5, noData_flag.size()).c_str());
   }
 
-  std::ofstream outputTime("./output/timestamp.txt"); 
-  std::streambuf* coutTime = std::cout.rdbuf();
-  std::cout.rdbuf(outputTime.rdbuf());
-
   //Timing
   using namespace std::chrono;
-  int64_t initial_time, final_time, general_time;
   system_clock::time_point begin, end;
+  int64_t initial_time, final_time, general_time;
+  std::cout << "PHASE, TIMESTAMP, START_TIME, END_TIME" << std::endl;
 
   initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "INITIAL, " << initial_time << std::endl;
-
   begin = system_clock::now();
+
   Landsat landsat = Landsat(method, bands_paths, tal_path, land_cover_path);
   landsat.process_products(mtl, sensor, station);
+
   end = system_clock::now();
-
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "FINAL, " << final_time << std::endl;
-
   general_time = duration_cast<milliseconds>(end.time_since_epoch() - begin.time_since_epoch()).count();
-  std::cout << "TOTAL - DURATION, " << general_time << std::endl;
+
+  std::cout << "TOTAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   return 0;
 }

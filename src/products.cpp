@@ -392,12 +392,13 @@ void aerodynamic_resistance_fuction(vector<double> ustar_line, int width_band, v
 void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> pai_vector, vector<vector<double>> &sensible_heat_flux_vector)
 {
   using namespace std::chrono;
-  int64_t general_time;
+  int64_t general_time, initial_time, final_time;
   system_clock::time_point begin, end;
 
   // ============== COMPUTE INITIAL RAH
 
-	begin = system_clock::now();
+  begin = system_clock::now();
+  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   double ustar_station = (VON_KARMAN * station.v6) / (log(station.WIND_SPEED / station.SURFACE_ROUGHNESS));
   double u10 = (ustar_station / VON_KARMAN) * log(10 / station.SURFACE_ROUGHNESS);
 
@@ -531,7 +532,8 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
   }
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
-  std::cout << "RAH CYCLE - DURATION, " << general_time << std::endl;
+  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  std::cout << "P2 - RAH CYCLE, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   // ============== COMPUTE H
 

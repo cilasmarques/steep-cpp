@@ -13,7 +13,7 @@ Landsat::Landsat(int method, string bands_paths[], string tal_path, string land_
 void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
 {
   using namespace std::chrono;
-  int64_t general_time;
+  int64_t general_time, initial_time, final_time, phase2_initial_time, phase2_final_time;
   system_clock::time_point begin, end, phase1_begin, phase2_begin, phase1_end, phase2_end;
 
   Reader TIFFs_reader = Reader();
@@ -35,9 +35,12 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   TIFFGetField(bands_resampled[1], TIFFTAG_IMAGEWIDTH, &width_band);
   TIFFGetField(bands_resampled[1], TIFFTAG_SAMPLEFORMAT, &sample_bands);
 
+
   // ===== PHASE 1 =====
 
 	phase1_begin = system_clock::now();
+  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
 
   // ==== INITIAL PRODUCTS
 
@@ -94,17 +97,22 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   }
 	phase1_end = system_clock::now();
   general_time = duration_cast<milliseconds>(phase1_end - phase1_begin).count();
-  std::cout << "PHASE 1 - DURATION, " << general_time << std::endl;
+  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  std::cout << "P1 - TOTAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   TIFFClose(tal);
+
 
   // ===== PHASE 2 =====
 
 	phase2_begin = system_clock::now();
+  phase2_initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
 
   // ==== PIXEL SELECTION
 
 	begin = system_clock::now();
+  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   Candidate hot_pixel, cold_pixel;
   if (this->method == 0)
   { // STEEP
@@ -124,11 +132,14 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   }
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
-  std::cout << "PIXEL SELECTION - DURATION, " << general_time << std::endl;
+  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  std::cout << "P2 - PIXEL SELECTION, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+
 
   // ==== RAH CYCLE - COMPUTE H 
 
 	begin = system_clock::now();
+  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   vector<vector<double>> sensible_heat_flux_vector(height_band, vector<double>(width_band));
   if (this->method == 0)
   { // STEEP
@@ -140,7 +151,9 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   }
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
-  std::cout << "H - DURATION, " << general_time << std::endl;
+  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  std::cout << "P2 - H, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+
 
   // ==== FINAL PRODUCTS 
 
@@ -160,6 +173,7 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   double Rs24h = station.INTERNALIZATION_FACTOR * sqrt(station.v7_max - station.v7_min) * Ra24h;
 
 	begin = system_clock::now();
+  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   for (int line = 0; line < height_band; line++)
   {
     latent_heat_flux_function(net_radiation_vector[line], soil_heat_vector[line], sensible_heat_flux_vector[line], width_band, latent_heat_flux_vector[line]);
@@ -172,51 +186,11 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   }
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
-  std::cout << "FINAL PRODUCTS - DURATION, " << general_time << std::endl;
+  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  std::cout << "P2 - FINAL PRODUCTS, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   phase2_end = system_clock::now();
   general_time = duration_cast<milliseconds>(phase2_end - phase2_begin).count();
-  std::cout << "PHASE 2 - DURATION, " << general_time << std::endl;
-
-  // =====  END + OUTPUTS =====
-
-  std::ofstream outputProds("./output/products.txt"); 
-  std::streambuf* coutProds = std::cout.rdbuf();
-  std::cout.rdbuf(outputProds.rdbuf());
-
-  std::cout << " ==== albedo" << std::endl;
-  printVector2x2(albedo_vector);
-
-  std::cout << " ==== ndvi" << std::endl;
-  printVector2x2(ndvi_vector);
-
-  std::cout << " ==== net_radiation" << std::endl;
-  printVector2x2(net_radiation_vector);
-
-  std::cout << " ==== soil_heat" << std::endl;
-  printVector2x2(soil_heat_vector);
-
-  std::cout << " ==== sensible_heat_flux" << std::endl;
-  printVector2x2(sensible_heat_flux_vector);
-
-  std::cout << " ==== latent_heat_flux" << std::endl;
-  printVector2x2(latent_heat_flux_vector);
-
-  std::cout << " ==== net_radiation_24h" << std::endl;
-  printVector2x2(net_radiation_24h_vector);
-
-  std::cout << " ==== evapotranspiration_fraction" << std::endl;
-  printVector2x2(evapotranspiration_fraction_vector);
-
-  std::cout << " ==== sensible_heat_flux_24h" << std::endl;
-  printVector2x2(sensible_heat_flux_24h_vector);
-
-  std::cout << " ==== latent_heat_flux_24h" << std::endl;
-  printVector2x2(latent_heat_flux_24h_vector);
-
-  std::cout << " ==== evapotranspiration_24h" << std::endl;
-  printVector2x2(evapotranspiration_24h_vector);
-
-  std::cout << " ==== evapotranspiration" << std::endl;
-  printVector2x2(evapotranspiration_vector);
+  phase2_final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  std::cout << "P2 - TOTAL, " << general_time << ", " << phase2_initial_time << ", " << phase2_final_time << std::endl;
 };
