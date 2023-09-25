@@ -1,5 +1,10 @@
 #include "products.h"
 
+static double H_pq_terra = 0;
+static double H_pf_terra = 0;
+static double rah_ini_pq_terra = 0;
+static double rah_ini_pf_terra = 0;
+
 void radiance_function(TIFF **bands_resampled, uint32 width_band, uint16 sample_bands, MTL mtl, Sensor sensor, int line, vector<vector<double>> &radiance_line)
 {
   int inital_index = (mtl.number_sensor == 8) ? 7 : 1;
@@ -18,10 +23,11 @@ void radiance_function(TIFF **bands_resampled, uint32 width_band, uint16 sample_
       double radiance_pixel = NaN;
       double band_pixel = pixel_reader.read_tiff_pixel(col);
 
-      if (band_pixel > 0) {
-      // if (mtl.number_sensor == 8)
-      //   radiance_pixel = band_pixel * mtl.rad_mult_10 + mtl.rad_add_10;
-      // else
+      if (band_pixel > 0)
+      {
+        // if (mtl.number_sensor == 8)
+        //   radiance_pixel = band_pixel * mtl.rad_mult_10 + mtl.rad_add_10;
+        // else
         radiance_pixel = band_pixel * sensor.parameters[i_band][sensor.GRESCALE] + sensor.parameters[i_band][sensor.BRESCALE];
       }
 
@@ -48,7 +54,8 @@ void reflectance_function(TIFF **bands_resampled, uint32 width_band, uint16 samp
       double reflectance_pixel = NaN;
       double band_pixel = pixel_reader.read_tiff_pixel(col);
 
-      if (band_pixel > 0) {
+      if (band_pixel > 0)
+      {
         double radiance_pixel = band_pixel * sensor.parameters[i_band][sensor.GRESCALE] + sensor.parameters[i_band][sensor.BRESCALE];
 
         if (mtl.number_sensor == 8)
@@ -389,54 +396,15 @@ void aerodynamic_resistance_fuction(vector<double> ustar_line, int width_band, v
     aerodynamic_resistance_line[col] = log(20) / (ustar_line[col] * VON_KARMAN);
 };
 
-void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> pai_vector, vector<vector<double>> &sensible_heat_flux_vector)
+void correctionCycleSTEEP(Candidate hot_pixel, Candidate cold_pixel, int start_line, int end_line, uint32 height_band, uint32 width_band, double ndvi_min, double ndvi_max,
+                                    vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector,
+                                    vector<vector<double>> surface_temperature_vector, vector<vector<double>> d0_vector, vector<vector<double>> zom_vector,
+                                    vector<vector<double>> kb1_vector, vector<vector<double>> pai_vector, vector<vector<double>> &ustar_vector,
+                                    vector<vector<double>> &aerodynamic_resistance_vector, vector<vector<double>> &sensible_heat_flux_vector)
 {
-  using namespace std::chrono;
-  int64_t general_time, initial_time, final_time;
-  system_clock::time_point begin, end;
-
-  // ============== COMPUTE INITIAL RAH
-
-  begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  double ustar_station = (VON_KARMAN * station.v6) / (log(station.WIND_SPEED / station.SURFACE_ROUGHNESS));
-  double u10 = (ustar_station / VON_KARMAN) * log(10 / station.SURFACE_ROUGHNESS);
-
-  double ndvi_min = 1.0;
-  double ndvi_max = 0.0;
-  for (int line = 0; line < height_band; line++)
-  {
-    vector<double> ndvi_line = ndvi_vector[line];
-    for (int col = 0; col < width_band; col++)
-    {
-      if (ndvi_line[col] < ndvi_min)
-        ndvi_min = ndvi_line[col];
-      if (ndvi_line[col] > ndvi_max)
-        ndvi_max = ndvi_line[col];
-    }
-  }
-
-  vector<vector<double>> d0_vector(height_band, vector<double>(width_band));
-  vector<vector<double>> zom_vector(height_band, vector<double>(width_band));
-  vector<vector<double>> ustar_vector(height_band, vector<double>(width_band));
-  vector<vector<double>> kb1_vector(height_band, vector<double>(width_band));
-  vector<vector<double>> aerodynamic_resistance_vector(height_band, vector<double>(width_band));
-
-  for (int line = 0; line < height_band; line++)
-  {
-    d0_fuction(pai_vector[line], width_band, d0_vector[line]);
-    zom_fuction(station.A_ZOM, station.B_ZOM, ndvi_vector[line], d0_vector[line], pai_vector[line], width_band, zom_vector[line]);
-    ustar_fuction(u10, zom_vector[line], d0_vector[line], width_band, ustar_vector[line]);
-    kb_function(ustar_vector[line], zom_vector[line], pai_vector[line], ndvi_vector[line], ndvi_max, ndvi_min, width_band, kb1_vector[line]);
-    aerodynamic_resistance_fuction(ustar_vector[line], zom_vector[line], d0_vector[line], kb1_vector[line], width_band, aerodynamic_resistance_vector[line]);
-  }
-
-  // ============== COMPUTE FINAL RAH
-
   vector<vector<double>> ustar_previous(height_band, vector<double>(width_band));
   vector<vector<double>> aerodynamic_resistance_previous(height_band, vector<double>(width_band));
 
-  // Auxiliaries arrays calculation
   double L[width_band];
   double y_01_line[width_band], y_2_line[width_band], x_200_line[width_band];
   double psi_01_line[width_band], psi_2_line[width_band], psi_200_line[width_band];
@@ -449,11 +417,6 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
 
   double fc_hot = 1 - pow((ndvi_vector[hot_pixel.line][hot_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
   double fc_cold = 1 - pow((ndvi_vector[cold_pixel.line][cold_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
-
-  double H_pf_terra;
-  double H_pq_terra;
-  double rah_ini_pq_terra;
-  double rah_ini_pf_terra;
 
   for (int i = 0; i < 2; i++)
   {
@@ -530,10 +493,82 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
       }
     }
   }
-  end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH CYCLE, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+};
+
+vector<vector<double>> sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> pai_vector)
+{
+  using namespace std::chrono;
+  int64_t general_time, initial_time, final_time;
+  system_clock::time_point begin, end;
+
+  vector<vector<double>> sensible_heat_flux_vector(height_band, vector<double>(width_band));
+
+  // ============== COMPUTE INITIAL RAH
+
+  begin = system_clock::now();
+  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  double ustar_station = (VON_KARMAN * station.v6) / (log(station.WIND_SPEED / station.SURFACE_ROUGHNESS));
+  double u10 = (ustar_station / VON_KARMAN) * log(10 / station.SURFACE_ROUGHNESS);
+
+  double ndvi_min = 1.0;
+  double ndvi_max = 0.0;
+  for (int line = 0; line < height_band; line++)
+  {
+    vector<double> ndvi_line = ndvi_vector[line];
+    for (int col = 0; col < width_band; col++)
+    {
+      if (ndvi_line[col] < ndvi_min)
+        ndvi_min = ndvi_line[col];
+      if (ndvi_line[col] > ndvi_max)
+        ndvi_max = ndvi_line[col];
+    }
+  }
+
+  vector<vector<double>> d0_vector(height_band, vector<double>(width_band));
+  vector<vector<double>> zom_vector(height_band, vector<double>(width_band));
+  vector<vector<double>> ustar_vector(height_band, vector<double>(width_band));
+  vector<vector<double>> kb1_vector(height_band, vector<double>(width_band));
+  vector<vector<double>> aerodynamic_resistance_vector(height_band, vector<double>(width_band));
+
+  for (int line = 0; line < height_band; line++)
+  {
+    d0_fuction(pai_vector[line], width_band, d0_vector[line]);
+    zom_fuction(station.A_ZOM, station.B_ZOM, ndvi_vector[line], d0_vector[line], pai_vector[line], width_band, zom_vector[line]);
+    ustar_fuction(u10, zom_vector[line], d0_vector[line], width_band, ustar_vector[line]);
+    kb_function(ustar_vector[line], zom_vector[line], pai_vector[line], ndvi_vector[line], ndvi_max, ndvi_min, width_band, kb1_vector[line]);
+    aerodynamic_resistance_fuction(ustar_vector[line], zom_vector[line], d0_vector[line], kb1_vector[line], width_band, aerodynamic_resistance_vector[line]);
+  }
+
+  // ============== COMPUTE FINAL RAH
+
+  int THREADS = 1;
+  thread threads[THREADS];
+  int lines_per_thread = height_band / THREADS;
+
+  // correctionCycleSTEEP(
+  //     hot_pixel, cold_pixel, 0, lines_per_thread, height_band, width_band, ndvi_min, ndvi_max,
+  //     ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, 
+  //     d0_vector, zom_vector, kb1_vector, pai_vector, ustar_vector, 
+  //     aerodynamic_resistance_vector, sensible_heat_flux_vector
+  // );
+
+  for (int i = 0; i < THREADS; i++)
+  {
+    int start_line = i * lines_per_thread;
+    int end_line = (i == THREADS - 1) ? height_band : start_line + lines_per_thread;
+
+    threads[i] = thread(
+        correctionCycleSTEEP,
+        hot_pixel, cold_pixel, start_line, end_line, height_band, width_band, ndvi_min, ndvi_max,
+        ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, 
+        d0_vector, zom_vector, kb1_vector, pai_vector, ref(ustar_vector), 
+        ref(aerodynamic_resistance_vector), ref(sensible_heat_flux_vector)
+    );  
+  }
+
+  for (int i = 0; i < THREADS; i++) {
+    threads[i].join();
+  }
 
   // ============== COMPUTE H
 
@@ -555,6 +590,8 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
       }
     }
   }
+
+  return sensible_heat_flux_vector;
 };
 
 void sensible_heat_function_default(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> &sensible_heat_flux_vector)

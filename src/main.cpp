@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
   using namespace std::chrono;
   system_clock::time_point begin, end;
   int64_t initial_time, final_time, general_time;
-  std::cout << "PHASE, TIMESTAMP, START_TIME, END_TIME" << std::endl;
+  std::cout << "PHASE,TIMESTAMP,START_TIME,END_TIME" << std::endl;
 
   initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   begin = system_clock::now();
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   general_time = duration_cast<milliseconds>(end.time_since_epoch() - begin.time_since_epoch()).count();
 
-  std::cout << "TOTAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  std::cout << "TOTAL," << general_time << "," << initial_time << "," << final_time << std::endl;
 
   return 0;
 }
