@@ -143,36 +143,12 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   vector<vector<double>> sensible_heat_flux_vector(height_band, vector<double>(width_band));
   if (this->method == 0)
   { // STEEP
-    sensible_heat_flux_vector = sensible_heat_function_STEEP(hot_pixel, cold_pixel, station, height_band, width_band, ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, pai_vector);
+    sensible_heat_function_STEEP(hot_pixel, cold_pixel, station, height_band, width_band, ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, pai_vector, sensible_heat_flux_vector);
   }
   else
   { // ASEBAL & ESASEB
     sensible_heat_function_default(hot_pixel, cold_pixel, station, height_band, width_band, ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, sensible_heat_flux_vector);
   }
-
-  // int THREADS = 2;
-  // thread threads[THREADS];
-  // int lines_per_thread = height_band / THREADS;
-
-  // for (int i=0; i < THREADS; i++) {    
-  //   int start_line = i * lines_per_thread;
-  //   int end_line = (i == THREADS - 1) ? height_band : start_line + lines_per_thread;
-  
-  //   if (this->method == 0)
-  //   { // STEEP
-  //     threads[i] = thread(sensible_heat_function_STEEP, hot_pixel, cold_pixel, station, start_line, end_line, height_band, width_band, ref(ndvi_vector), ref(net_radiation_vector), 
-  //                         ref(soil_heat_vector), ref(surface_temperature_vector), ref(pai_vector), ref(sensible_heat_flux_vector));
-  //   }
-  //   else
-  //   { // ASEBAL & ESASEB
-  //     threads[i] = thread(sensible_heat_function_default, hot_pixel, cold_pixel, station, start_line, end_line, height_band, width_band, ref(ndvi_vector), ref(net_radiation_vector), 
-  //                         ref(soil_heat_vector), ref(surface_temperature_vector), ref(sensible_heat_flux_vector));
-  //   }
-  // }
-
-  // for (int i = 0; i < THREADS; i++)
-  //   threads[i].join();
-
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
