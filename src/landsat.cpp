@@ -1,6 +1,6 @@
 #include "landsat.h"
 
-Landsat::Landsat(int method, string bands_paths[], string tal_path, string land_cover_path)
+Landsat::Landsat(int method, string bands_paths[], string tal_path, string land_cover_path, int threads_num)
 {
   for (int i = 0; i < 8; i++)
     this->bands_paths[i] = bands_paths[i];
@@ -8,6 +8,7 @@ Landsat::Landsat(int method, string bands_paths[], string tal_path, string land_
   this->tal_path = tal_path;
   this->land_cover_path = land_cover_path;
   this->method = method;
+  this->threads_num = threads_num;
 };
 
 void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
@@ -98,7 +99,7 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
 	phase1_end = system_clock::now();
   general_time = duration_cast<milliseconds>(phase1_end - phase1_begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P1 - TOTAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  std::cout << "P1 - TOTAL," << general_time << "," << initial_time << "," << final_time << std::endl;
 
   TIFFClose(tal);
 
@@ -133,7 +134,7 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - PIXEL SELECTION, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  std::cout << "P2 - PIXEL SELECTION," << general_time << "," << initial_time << "," << final_time << std::endl;
 
 
   // ==== RAH CYCLE - COMPUTE H 
@@ -143,16 +144,16 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   vector<vector<double>> sensible_heat_flux_vector(height_band, vector<double>(width_band));
   if (this->method == 0)
   { // STEEP
-    sensible_heat_function_STEEP(hot_pixel, cold_pixel, station, height_band, width_band, ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, pai_vector, sensible_heat_flux_vector);
+    sensible_heat_function_STEEP(hot_pixel, cold_pixel, station, height_band, width_band, this->threads_num, ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, pai_vector, sensible_heat_flux_vector);
   }
   else
   { // ASEBAL & ESASEB
-    sensible_heat_function_default(hot_pixel, cold_pixel, station, height_band, width_band, ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, sensible_heat_flux_vector);
+    sensible_heat_function_default(hot_pixel, cold_pixel, station, height_band, width_band, this->threads_num, ndvi_vector, net_radiation_vector, soil_heat_vector, surface_temperature_vector, sensible_heat_flux_vector);
   }
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - H, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  std::cout << "P2 - H," << general_time << "," << initial_time << "," << final_time << std::endl;
 
 
   // ==== FINAL PRODUCTS 
@@ -187,10 +188,10 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - FINAL PRODUCTS, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  std::cout << "P2 - FINAL PRODUCTS," << general_time << "," << initial_time << "," << final_time << std::endl;
 
   phase2_end = system_clock::now();
   general_time = duration_cast<milliseconds>(phase2_end - phase2_begin).count();
   phase2_final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - TOTAL, " << general_time << ", " << phase2_initial_time << ", " << phase2_final_time << std::endl;
+  std::cout << "P2 - TOTAL," << general_time << "," << phase2_initial_time << "," << phase2_final_time << std::endl;
 };
