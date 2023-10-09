@@ -86,7 +86,8 @@ int main(int argc, char *argv[])
 
   std::cout << "TOTAL," << general_time << "," << initial_time << "," << final_time << std::endl;
 
-  std::ofstream outputThreads("./output/threads.txt");
+  string outPath = string(argv[OUTPUT_FOLDER]) + "/threads.txt";
+  std::ofstream outputThreads(outPath);
   std::streambuf* coutThreads = std::cout.rdbuf();
   std::cout.rdbuf(outputThreads.rdbuf());
   std::cout << threads_num << std::endl;
