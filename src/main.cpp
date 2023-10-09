@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
   }
 
   // load threads number
-  int threads_num = 256;
+  int threads_num = 8;
   if(argc >= 16){
     string threads_flag = argv[15];
     if(threads_flag.substr(0,9) == "-threads=")
@@ -85,6 +85,11 @@ int main(int argc, char *argv[])
   general_time = duration_cast<milliseconds>(end.time_since_epoch() - begin.time_since_epoch()).count();
 
   std::cout << "TOTAL," << general_time << "," << initial_time << "," << final_time << std::endl;
+
+  std::ofstream outputThreads("./output/threads.txt");
+  std::streambuf* coutThreads = std::cout.rdbuf();
+  std::cout.rdbuf(outputThreads.rdbuf());
+  std::cout << threads_num << std::endl;
 
   return 0;
 }
