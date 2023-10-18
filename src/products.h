@@ -40,11 +40,6 @@ void aerodynamic_resistance_fuction(vector<double> ustar_line, vector<double> zo
 void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> pai_vector, vector<vector<double>> &sensible_heat_flux_vector);
 void sensible_heat_function_default(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> &sensible_heat_flux_vector);
 
-void correctionCycleSTEEP(int start_col, int end_col, double a, double b, vector<double> surface_temperature_vector_line,
-                        vector<double> d0_vector_line, vector<double> zom_vector_line, vector<double> kb1_vector_line, 
-                        vector<double> pai_vector_line, vector<double> ustar_previous_line, vector<double> aerodynamic_resistance_previous_line, 
-                        vector<double> &ustar_vector_line, vector<double> &aerodynamic_resistance_vector_line, vector<double> &sensible_heat_flux_vector_line);
-
 void latent_heat_flux_function(vector<double> net_radiation_line, vector<double> soil_heat_flux_line, vector<double> sensible_heat_flux_line, int width_band, vector<double> &latent_heat_flux);
 void net_radiation_24h_function(vector<double> albedo_line, double Ra24h, double Rs24h, int width_band, vector<double> &net_radiation_24h_line);
 void evapotranspiration_fraction_fuction(vector<double> latent_heat_flux_line, vector<double> net_radiation_line, vector<double> soil_heat_line, int width_band, vector<double> &evapotranspiration_fraction_line);
