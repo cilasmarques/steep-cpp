@@ -18,10 +18,11 @@ void radiance_function(TIFF **bands_resampled, uint32 width_band, uint16 sample_
       double radiance_pixel = NaN;
       double band_pixel = pixel_reader.read_tiff_pixel(col);
 
-      if (band_pixel > 0) {
-      // if (mtl.number_sensor == 8)
-      //   radiance_pixel = band_pixel * mtl.rad_mult_10 + mtl.rad_add_10;
-      // else
+      if (band_pixel > 0)
+      {
+        // if (mtl.number_sensor == 8)
+        //   radiance_pixel = band_pixel * mtl.rad_mult_10 + mtl.rad_add_10;
+        // else
         radiance_pixel = band_pixel * sensor.parameters[i_band][sensor.GRESCALE] + sensor.parameters[i_band][sensor.BRESCALE];
       }
 
@@ -48,7 +49,8 @@ void reflectance_function(TIFF **bands_resampled, uint32 width_band, uint16 samp
       double reflectance_pixel = NaN;
       double band_pixel = pixel_reader.read_tiff_pixel(col);
 
-      if (band_pixel > 0) {
+      if (band_pixel > 0)
+      {
         double radiance_pixel = band_pixel * sensor.parameters[i_band][sensor.GRESCALE] + sensor.parameters[i_band][sensor.BRESCALE];
 
         if (mtl.number_sensor == 8)
@@ -389,47 +391,61 @@ void aerodynamic_resistance_fuction(vector<double> ustar_line, int width_band, v
     aerodynamic_resistance_line[col] = log(20) / (ustar_line[col] * VON_KARMAN);
 };
 
-void correctionCycleSTEEP(int start_col, int end_col, double a, double b, vector<double> surface_temperature_vector_line,
-                        vector<double> d0_vector_line, vector<double> zom_vector_line, vector<double> kb1_vector_line, 
-                        vector<double> pai_vector_line, vector<double> ustar_previous_line, vector<double> aerodynamic_resistance_previous_line, 
-                        vector<double> &ustar_vector_line, vector<double> &aerodynamic_resistance_vector_line, vector<double> &sensible_heat_flux_vector_line)
+void correctionCycleSTEEP(int start_line, int end_line, uint32 width_band, Candidate hot_pixel, Candidate cold_pixel, double a, double b, 
+                          vector<vector<double>> surface_temperature_vector, vector<vector<double>> d0_vector, vector<vector<double>> zom_vector, 
+                          vector<vector<double>> kb1_vector, vector<vector<double>> pai_vector, vector<vector<double>> ustar_previous, 
+                          vector<vector<double>> aerodynamic_resistance_previous, vector<vector<double>> &ustar_vector, 
+                          vector<vector<double>> &aerodynamic_resistance_vector, vector<vector<double>> &sensible_heat_flux_vector)
 {
-  for (int col = start_col; col < end_col; col++)
+  for (int line = start_line; line < end_line; line++)
   {
-    double DISP = d0_vector_line[col];
-
-    double dT_ini_terra = a + b * (surface_temperature_vector_line[col] - 273.15);
-
-    sensible_heat_flux_vector_line[col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / aerodynamic_resistance_previous_line[col];
-
-    double L = -1 * ((RHO * SPECIFIC_HEAT_AIR * pow(ustar_previous_line[col], 3) * surface_temperature_vector_line[col]) / (VON_KARMAN * GRAVITY * sensible_heat_flux_vector_line[col]));
-
-    double y2 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
-    double x200 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
-
-    double psi01, psi2, psi200;
-
-    if (!isnan(L) && L > 0)
+    for (int col = 0; col < width_band; col++)
     {
-      psi2 = -5 * ((10 - DISP) / L);
-      psi200 = -5 * ((10 - DISP) / L);
+      double DISP = d0_vector[line][col];
+
+      double dT_ini_terra = a + b * (surface_temperature_vector[line][col] - 273.15);
+
+      sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / aerodynamic_resistance_previous[line][col];
+
+      double L = -1 * ((RHO * SPECIFIC_HEAT_AIR * pow(ustar_previous[line][col], 3) * surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * sensible_heat_flux_vector[line][col]));
+
+      double y2 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
+      double x200 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
+
+      double psi01, psi2, psi200;
+
+      if (!isnan(L) && L > 0)
+      {
+        psi2 = -5 * ((10 - DISP) / L);
+        psi200 = -5 * ((10 - DISP) / L);
+      }
+      else
+      {
+        psi2 = 2 * log((1 + y2 * y2) / 2);
+        psi200 = 2 * log((1 + x200) / 2) + log((1 + x200 * x200) / 2) - 2 * atan(x200) + 0.5 * M_PI;
+      }
+
+      double ust = (VON_KARMAN * ustar_previous[line][col]) / (log((10 - DISP) / zom_vector[line][col]) - psi200);
+
+      double zoh_terra = zom_vector[line][col] / pow(exp(1.0), (kb1_vector[line][col]));
+      double temp_rah1_corr_terra = (ust * VON_KARMAN);
+      double temp_rah2_corr_terra = log((10 - DISP) / zom_vector[line][col]) - psi2;
+      double temp_rah3_corr_terra = temp_rah1_corr_terra * log(zom_vector[line][col] / zoh_terra);
+      double rah = (temp_rah1_corr_terra * temp_rah2_corr_terra) + temp_rah3_corr_terra;
+
+      ustar_vector[line][col] = ust;
+      aerodynamic_resistance_vector[line][col] = rah;
+
+      if (line == hot_pixel.line && col == hot_pixel.col)
+      {
+        hot_pixel.aerodynamic_resistance.push_back(aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col]);
+      }
+
+      if (line == cold_pixel.line && col == cold_pixel.col)
+      {
+        cold_pixel.aerodynamic_resistance.push_back(aerodynamic_resistance_vector[cold_pixel.line][cold_pixel.col]);
+      }
     }
-    else
-    {
-      psi2 = 2 * log((1 + y2 * y2) / 2);
-      psi200 = 2 * log((1 + x200) / 2) + log((1 + x200 * x200) / 2) - 2 * atan(x200) + 0.5 * M_PI;
-    }
-
-    double ust = (VON_KARMAN * ustar_previous_line[col]) / (log((10 - DISP) / zom_vector_line[col]) - psi200);
-
-    double zoh_terra = zom_vector_line[col] / pow(exp(1.0), (kb1_vector_line[col]));
-    double temp_rah1_corr_terra = (ust * VON_KARMAN);
-    double temp_rah2_corr_terra = log((10 - DISP) / zom_vector_line[col]) - psi2;
-    double temp_rah3_corr_terra = temp_rah1_corr_terra * log(zom_vector_line[col] / zoh_terra);
-    double rah = (temp_rah1_corr_terra * temp_rah2_corr_terra) + temp_rah3_corr_terra;
-
-    ustar_vector_line[col] = ust;
-    aerodynamic_resistance_vector_line[col] = rah;
   }
 };
 
@@ -500,7 +516,7 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
   double rah_ini_pf_terra;
 
   thread threads[threads_num];
-  int col_per_thread = width_band / threads_num;
+  int lines_per_thread = height_band / threads_num;
 
   for (int i = 0; i < 2; i++)
   {
@@ -522,34 +538,22 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
     double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
     double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
 
-    for (int line = 0; line < height_band; line++)
+    for (int i = 0; i < threads_num; i++)
     {
-      for (int i = 0; i < threads_num; i++)
-      {
-        int start_col = i * col_per_thread;
-        int end_col = (i == threads_num - 1) ? width_band : start_col + col_per_thread;
+      int start_line = i * lines_per_thread;
+      int end_line = (i == threads_num - 1) ? height_band : (i + 1) * lines_per_thread;
 
-        threads[i] = thread(
-            correctionCycleSTEEP,
-            start_col, end_col, a, b, surface_temperature_vector[line],
-            d0_vector[line], zom_vector[line], kb1_vector[line], pai_vector[line],
-            ustar_previous[line], aerodynamic_resistance_previous[line],
-            ref(ustar_vector[line]), ref(aerodynamic_resistance_vector[line]), ref(sensible_heat_flux_vector[line]));
-      }
-
-      for (int i = 0; i < threads_num; i++)
-        threads[i].join();
-
-      if (line == hot_pixel.line)
-      {
-        hot_pixel.aerodynamic_resistance.push_back(aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col]);
-      }
-
-      if (line == cold_pixel.line)
-      {
-        cold_pixel.aerodynamic_resistance.push_back(aerodynamic_resistance_vector[cold_pixel.line][cold_pixel.col]);
-      }
+      threads[i] = thread(
+        correctionCycleSTEEP,
+        start_line, end_line, width_band,
+        hot_pixel, cold_pixel, a, b,
+        surface_temperature_vector, d0_vector, zom_vector, kb1_vector, pai_vector,
+        ustar_previous, aerodynamic_resistance_previous,
+        ref(ustar_vector), ref(aerodynamic_resistance_vector), ref(sensible_heat_flux_vector));
     }
+
+    for (int i = 0; i < threads_num; i++)
+      threads[i].join();
   }
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
