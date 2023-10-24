@@ -1,6 +1,44 @@
 #include "products.h"
 
-void radiance_function(TIFF **bands_resampled, uint32 width_band, uint16 sample_bands, MTL mtl, Sensor sensor, int line, vector<vector<double>> &radiance_line)
+Products::Products(uint32 width_band, uint32 height_band)
+{
+  this->width_band = width_band;
+  this->height_band = height_band;
+
+  this->radiance_vector = vector<vector<vector<double>>>(height_band, vector<vector<double>>(width_band, vector<double>(8)));
+  this->reflectance_vector = vector<vector<vector<double>>>(height_band, vector<vector<double>>(width_band, vector<double>(8)));
+  this->albedo_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->ndvi_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->soil_heat_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->surface_temperature_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->net_radiation_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->lai_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->evi_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->pai_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->enb_emissivity_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->eo_emissivity_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->ea_emissivity_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->short_wave_radiation_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->large_wave_radiation_surface_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->large_wave_radiation_atmosphere_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->d0_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->zom_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->ustar_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->kb1_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->aerodynamic_resistance_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->sensible_heat_flux_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->ustar_previous = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->aerodynamic_resistance_previous = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->latent_heat_flux_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->net_radiation_24h_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->evapotranspiration_fraction_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->sensible_heat_flux_24h_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->latent_heat_flux_24h_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->evapotranspiration_24h_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+  this->evapotranspiration_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+};
+
+void Products::radiance_function(TIFF **bands_resampled, uint32 width_band, uint16 sample_bands, MTL mtl, Sensor sensor, int line)
 {
   int inital_index = (mtl.number_sensor == 8) ? 7 : 1;
 
@@ -26,14 +64,14 @@ void radiance_function(TIFF **bands_resampled, uint32 width_band, uint16 sample_
         radiance_pixel = band_pixel * sensor.parameters[i_band][sensor.GRESCALE] + sensor.parameters[i_band][sensor.BRESCALE];
       }
 
-      radiance_line[col][i_band] = radiance_pixel;
+      this->radiance_vector[line][col][i_band] = radiance_pixel;
     }
 
     _TIFFfree(band_line_buff);
   }
 }
 
-void reflectance_function(TIFF **bands_resampled, uint32 width_band, uint16 sample_bands, MTL mtl, Sensor sensor, int line, vector<vector<double>> &reflectance_line)
+void Products::reflectance_function(TIFF **bands_resampled, uint32 width_band, uint16 sample_bands, MTL mtl, Sensor sensor, int line)
 {
   for (int i_band = 1; i_band < 8; i_band++)
   {
@@ -59,111 +97,112 @@ void reflectance_function(TIFF **bands_resampled, uint32 width_band, uint16 samp
           reflectance_pixel = (PI * radiance_pixel * mtl.distance_earth_sun * mtl.distance_earth_sun) / (sensor.parameters[i_band][sensor.ESUN] * sin(mtl.sun_elevation * PI / 180));
       }
 
-      reflectance_line[col][i_band] = reflectance_pixel;
+      this->reflectance_vector[line][col][i_band] = reflectance_pixel;
     }
 
     _TIFFfree(band_line_buff);
   }
 }
 
-void albedo_function(Reader tal_reader, Sensor sensor, uint32 width_band, int number_sensor, vector<vector<double>> reflectance_line, vector<double> &albedo_line)
+void Products::albedo_function(Reader tal_reader, Sensor sensor, uint32 width_band, int number_sensor, int line)
 {
   int final_tif_calc = number_sensor == 8 ? 6 : 7;
 
   for (int col = 0; col < width_band; col++)
   {
-    double alb = reflectance_line[col][1] * sensor.parameters[1][sensor.WB] +
-                 reflectance_line[col][2] * sensor.parameters[2][sensor.WB] +
-                 reflectance_line[col][3] * sensor.parameters[3][sensor.WB] +
-                 reflectance_line[col][4] * sensor.parameters[4][sensor.WB] +
-                 reflectance_line[col][5] * sensor.parameters[5][sensor.WB] +
-                 reflectance_line[col][final_tif_calc] * sensor.parameters[final_tif_calc][sensor.WB];
+    double alb = this->reflectance_vector[line][col][1] * sensor.parameters[1][sensor.WB] +
+                 this->reflectance_vector[line][col][2] * sensor.parameters[2][sensor.WB] +
+                 this->reflectance_vector[line][col][3] * sensor.parameters[3][sensor.WB] +
+                 this->reflectance_vector[line][col][4] * sensor.parameters[4][sensor.WB] +
+                 this->reflectance_vector[line][col][5] * sensor.parameters[5][sensor.WB] +
+                 this->reflectance_vector[line][col][final_tif_calc] * sensor.parameters[final_tif_calc][sensor.WB];
 
     alb = (alb - 0.03) / (tal_reader.read_tiff_pixel(col) * tal_reader.read_tiff_pixel(col));
 
-    albedo_line[col] = alb;
+    this->albedo_vector[line][col] = alb;
   }
 }
 
-void ndvi_function(vector<vector<double>> reflectance_line, uint32 width_band, vector<double> &ndvi_line)
+void Products::ndvi_function(uint32 width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
-    ndvi_line[col] = (reflectance_line[col][4] - reflectance_line[col][3]) /
-                     (reflectance_line[col][4] + reflectance_line[col][3]);
+    this->ndvi_vector[line][col] =
+        (this->reflectance_vector[line][col][4] - this->reflectance_vector[line][col][3]) /
+        (this->reflectance_vector[line][col][4] + this->reflectance_vector[line][col][3]);
   }
 };
 
-void pai_function(vector<vector<double>> reflectance_line, uint32 width_band, vector<double> &pai_line)
+void Products::pai_function(uint32 width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
-    double pai_value = 10.1 * (reflectance_line[col][4] - sqrt(reflectance_line[col][3])) + 3.1;
+    double pai_value = 10.1 * (this->reflectance_vector[line][col][4] - sqrt(this->reflectance_vector[line][col][3])) + 3.1;
 
     if (pai_value < 0)
       pai_value = 0;
 
-    pai_line[col] = pai_value;
+    this->pai_vector[line][col] = pai_value;
   }
 };
 
-void lai_function(vector<vector<double>> reflectance_line, uint32 width_band, vector<double> &lai_line)
+void Products::lai_function(uint32 width_band, int line)
 {
   double savi_line[width_band];
   double L = 0.05;
 
   for (int col = 0; col < width_band; col++)
   {
-    savi_line[col] = ((1 + L) * (reflectance_line[col][4] - reflectance_line[col][3])) /
-                     (L + (reflectance_line[col][4] + reflectance_line[col][3]));
+    savi_line[col] = ((1 + L) * (this->reflectance_vector[line][col][4] - this->reflectance_vector[line][col][3])) /
+                     (L + (this->reflectance_vector[line][col][4] + this->reflectance_vector[line][col][3]));
 
     if (!isnan(savi_line[col]) && definitelyGreaterThan(savi_line[col], 0.687))
-      lai_line[col] = 6;
+      this->lai_vector[line][col] = 6;
     else if (!isnan(savi_line[col]) && definitelyLessThan(savi_line[col], 0.1))
-      lai_line[col] = 0;
+      this->lai_vector[line][col] = 0;
     else
-      lai_line[col] = -log((0.69 - savi_line[col]) / 0.59) / 0.91;
+      this->lai_vector[line][col] = -log((0.69 - savi_line[col]) / 0.59) / 0.91;
   }
 };
 
-void evi_function(vector<vector<double>> reflectance_line, uint32 width_band, vector<double> &evi_line)
+void Products::evi_function(uint32 width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
-    evi_line[col] = 2.5 * ((reflectance_line[col][4] - reflectance_line[col][3]) /
-                           (reflectance_line[col][4] + 6 * reflectance_line[col][3] - 7.5 * reflectance_line[col][1] + 1));
+    this->evi_vector[line][col] = 2.5 * ((this->reflectance_vector[line][col][4] - this->reflectance_vector[line][col][3]) /
+                                         (this->reflectance_vector[line][col][4] + 6 * this->reflectance_vector[line][col][3] - 7.5 * this->reflectance_vector[line][col][1] + 1));
   }
 };
 
-void enb_emissivity_function(vector<double> lai_line, vector<double> ndvi_line, uint32 width_band, vector<double> &enb_emissivity_line)
+void Products::enb_emissivity_function(uint32 width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
-    if (definitelyLessThan(ndvi_line[col], 0) || definitelyGreaterThan(lai_line[col], 2.99))
-      enb_emissivity_line[col] = 0.98;
+    if (definitelyLessThan(this->ndvi_vector[line][col], 0) || definitelyGreaterThan(this->lai_vector[line][col], 2.99))
+      this->enb_emissivity_vector[line][col] = 0.98;
     else
-      enb_emissivity_line[col] = 0.97 + 0.0033 * lai_line[col];
+      this->enb_emissivity_vector[line][col] = 0.97 + 0.0033 * this->lai_vector[line][col];
   }
 };
 
-void eo_emissivity_function(vector<double> lai_line, vector<double> ndvi_line, uint32 width_band, vector<double> &eo_emissivity_line)
+void Products::eo_emissivity_function(uint32 width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
-    if (definitelyLessThan(ndvi_line[col], 0) || definitelyGreaterThan(lai_line[col], 2.99))
-      eo_emissivity_line[col] = 0.98;
+    if (definitelyLessThan(this->ndvi_vector[line][col], 0) || definitelyGreaterThan(this->lai_vector[line][col], 2.99))
+      this->eo_emissivity_vector[line][col] = 0.98;
     else
-      eo_emissivity_line[col] = 0.95 + 0.01 * lai_line[col];
+      this->eo_emissivity_vector[line][col] = 0.95 + 0.01 * this->lai_vector[line][col];
   }
 };
 
-void ea_emissivity_function(Reader tal_reader, uint32 width_band, vector<double> &ea_emissivity_line)
+void Products::ea_emissivity_function(Reader tal_reader, uint32 width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
-    ea_emissivity_line[col] = 0.85 * pow((-1 * log(tal_reader.read_tiff_pixel(col))), 0.09);
+    this->ea_emissivity_vector[line][col] = 0.85 * pow((-1 * log(tal_reader.read_tiff_pixel(col))), 0.09);
 };
 
-void surface_temperature_function(vector<vector<double>> radiance_line, vector<double> enb_emissivity_line, int number_sensor, uint32 width_band, vector<double> &surface_temperature_line)
+void Products::surface_temperature_function(int number_sensor, uint32 width_band, int line)
 {
   double k1, k2;
 
@@ -192,73 +231,71 @@ void surface_temperature_function(vector<vector<double>> radiance_line, vector<d
   int radiance_number = (number_sensor == 5) ? 6 : 7;
 
   for (int col = 0; col < width_band; col++)
-    surface_temperature_line[col] = k2 / (log((enb_emissivity_line[col] * k1 / radiance_line[col][radiance_number]) + 1));
+    this->surface_temperature_vector[line][col] = k2 / (log((this->enb_emissivity_vector[line][col] * k1 / this->radiance_vector[line][col][radiance_number]) + 1));
 };
 
-void short_wave_radiation_function(Reader tal_reader, MTL mtl, uint32 width_band, vector<double> &short_wave_radiation_line)
+void Products::short_wave_radiation_function(Reader tal_reader, MTL mtl, uint32 width_band, int line)
 {
   double costheta = sin(mtl.sun_elevation * PI / 180);
 
   for (int col = 0; col < width_band; col++)
   {
-    short_wave_radiation_line[col] = (1367 * costheta * tal_reader.read_tiff_pixel(col)) /
-                                     (mtl.distance_earth_sun * mtl.distance_earth_sun);
+    this->short_wave_radiation_vector[line][col] = (1367 * costheta * tal_reader.read_tiff_pixel(col)) /
+                                                   (mtl.distance_earth_sun * mtl.distance_earth_sun);
   }
 };
 
-void large_wave_radiation_surface_function(vector<double> eo_emissivity_line, vector<double> surface_temperature_line, uint32 width_band, vector<double> &large_wave_radiation_surface_line)
+void Products::large_wave_radiation_surface_function(uint32 width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
-    double temperature_pixel = surface_temperature_line[col];
+    double temperature_pixel = this->surface_temperature_vector[line][col];
     double surface_temperature_pow_4 = temperature_pixel * temperature_pixel * temperature_pixel * temperature_pixel;
-    large_wave_radiation_surface_line[col] = eo_emissivity_line[col] * 5.67 * 1e-8 * surface_temperature_pow_4;
+    this->large_wave_radiation_surface_vector[line][col] = this->eo_emissivity_vector[line][col] * 5.67 * 1e-8 * surface_temperature_pow_4;
   }
 };
 
-void large_wave_radiation_atmosphere_function(vector<double> ea_emissivity_line, uint32 width_band, double temperature, vector<double> &large_wave_radiation_atmosphere_line)
+void Products::large_wave_radiation_atmosphere_function(uint32 width_band, double temperature, int line)
 {
   double temperature_kelvin = temperature + 273.15;
   double temperature_kelvin_pow_4 = temperature_kelvin * temperature_kelvin * temperature_kelvin * temperature_kelvin;
 
   for (int col = 0; col < width_band; col++)
-    large_wave_radiation_atmosphere_line[col] = ea_emissivity_line[col] * 5.67 * 1e-8 * temperature_kelvin_pow_4;
+    this->large_wave_radiation_atmosphere_vector[line][col] = this->ea_emissivity_vector[line][col] * 5.67 * 1e-8 * temperature_kelvin_pow_4;
 };
 
-void net_radiation_function(vector<double> short_wave_radiation_line, vector<double> large_wave_radiation_surface_line,
-                            vector<double> large_wave_radiation_atmosphere_line, vector<double> albedo_line,
-                            vector<double> eo_emissivity_line, uint32 width_band, vector<double> &net_radiation_line)
+void Products::net_radiation_function(uint32 width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
-    net_radiation_line[col] = short_wave_radiation_line[col] - (short_wave_radiation_line[col] * albedo_line[col]) +
-                              large_wave_radiation_atmosphere_line[col] - large_wave_radiation_surface_line[col] -
-                              (1 - eo_emissivity_line[col]) * large_wave_radiation_atmosphere_line[col];
+    this->net_radiation_vector[line][col] = this->short_wave_radiation_vector[line][col] - (this->short_wave_radiation_vector[line][col] * this->albedo_vector[line][col]) +
+                                            this->large_wave_radiation_atmosphere_vector[line][col] - this->large_wave_radiation_surface_vector[line][col] -
+                                            (1 - this->eo_emissivity_vector[line][col]) * this->large_wave_radiation_atmosphere_vector[line][col];
 
-    if (definitelyLessThan(net_radiation_line[col], 0))
-      net_radiation_line[col] = 0;
+    if (definitelyLessThan(this->net_radiation_vector[line][col], 0))
+      this->net_radiation_vector[line][col] = 0;
   }
 };
 
-void soil_heat_flux_function(vector<double> ndvi_line, vector<double> surface_temperature_line, vector<double> albedo_line, vector<double> net_radiation_line, uint32 width_band, vector<double> &soil_heat_line)
+void Products::soil_heat_flux_function(uint32 width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
-    if (essentiallyEqual(ndvi_line[col], 0) || definitelyGreaterThan(ndvi_line[col], 0))
+    if (essentiallyEqual(this->ndvi_vector[line][col], 0) || definitelyGreaterThan(this->ndvi_vector[line][col], 0))
     {
-      double ndvi_pixel_pow_4 = ndvi_line[col] * ndvi_line[col] * ndvi_line[col] * ndvi_line[col];
-      soil_heat_line[col] = (surface_temperature_line[col] - 273.15) * (0.0038 + 0.0074 * albedo_line[col]) *
-                            (1 - 0.98 * ndvi_pixel_pow_4) * net_radiation_line[col];
+      double ndvi_pixel_pow_4 = this->ndvi_vector[line][col] * this->ndvi_vector[line][col] * this->ndvi_vector[line][col] * this->ndvi_vector[line][col];
+      this->soil_heat_vector[line][col] = (this->surface_temperature_vector[line][col] - 273.15) * (0.0038 + 0.0074 * this->albedo_vector[line][col]) *
+                                          (1 - 0.98 * ndvi_pixel_pow_4) * this->net_radiation_vector[line][col];
     }
     else
-      soil_heat_line[col] = 0.5 * net_radiation_line[col];
+      this->soil_heat_vector[line][col] = 0.5 * this->net_radiation_vector[line][col];
 
-    if (definitelyLessThan(soil_heat_line[col], 0))
-      soil_heat_line[col] = 0;
+    if (definitelyLessThan(this->soil_heat_vector[line][col], 0))
+      this->soil_heat_vector[line][col] = 0;
   }
 };
 
-void d0_fuction(vector<double> pai_line, int width_band, vector<double> &d0_line)
+void Products::d0_fuction(vector<double> pai_line, int width_band, vector<double> &d0_line)
 {
   double CD1 = 20.6;
   double HGHT = 4;
@@ -279,7 +316,7 @@ void d0_fuction(vector<double> pai_line, int width_band, vector<double> &d0_line
   }
 };
 
-void kb_function(vector<double> ustar_line, vector<double> zom_line, vector<double> pai_line, vector<double> ndvi_line, double ndvi_max, double ndvi_min, int width_band, vector<double> &kb1_line)
+void Products::kb_function(vector<double> ustar_line, vector<double> zom_line, vector<double> pai_line, vector<double> ndvi_line, double ndvi_max, double ndvi_min, int width_band, vector<double> &kb1_line)
 {
   double HGHT = 4;
 
@@ -323,7 +360,7 @@ void kb_function(vector<double> ustar_line, vector<double> zom_line, vector<doub
   }
 };
 
-void zom_fuction(double A_ZOM, double B_ZOM, vector<double> ndvi_line, vector<double> d0_line, vector<double> pai_line, int width_band, vector<double> &zom_line)
+void Products::zom_fuction(double A_ZOM, double B_ZOM, vector<double> ndvi_line, vector<double> d0_line, vector<double> pai_line, int width_band, vector<double> &zom_line)
 {
   double HGHT = 4;
   double CD = 0.01;
@@ -342,13 +379,13 @@ void zom_fuction(double A_ZOM, double B_ZOM, vector<double> ndvi_line, vector<do
   }
 };
 
-void zom_fuction(double A_ZOM, double B_ZOM, vector<double> ndvi_line, int width_band, vector<double> &zom_line)
+void Products::zom_fuction(double A_ZOM, double B_ZOM, vector<double> ndvi_line, int width_band, vector<double> &zom_line)
 {
   for (int col = 0; col < width_band; col++)
     zom_line[col] = exp(A_ZOM + B_ZOM * ndvi_line[col]);
 };
 
-void ustar_fuction(double u10, vector<double> zom_line, vector<double> d0_line, int width_band, vector<double> &ustar_line)
+void Products::ustar_fuction(double u10, vector<double> zom_line, vector<double> d0_line, int width_band, vector<double> &ustar_line)
 {
   double zu = 10;
 
@@ -360,13 +397,13 @@ void ustar_fuction(double u10, vector<double> zom_line, vector<double> d0_line, 
   }
 };
 
-void ustar_fuction(double u200, vector<double> zom_line, int width_band, vector<double> &ustar_line)
+void Products::ustar_fuction(double u200, vector<double> zom_line, int width_band, vector<double> &ustar_line)
 {
   for (int col = 0; col < width_band; col++)
     ustar_line[col] = (VON_KARMAN * u200) / log(200 / zom_line[col]);
 };
 
-void aerodynamic_resistance_fuction(vector<double> ustar_line, vector<double> zom_line, vector<double> d0_line, vector<double> kb1_line, int width_band, vector<double> &aerodynamic_resistance_line)
+void Products::aerodynamic_resistance_fuction(vector<double> ustar_line, vector<double> zom_line, vector<double> d0_line, vector<double> kb1_line, int width_band, vector<double> &aerodynamic_resistance_line)
 {
   double zu = 10.0;
 
@@ -385,29 +422,27 @@ void aerodynamic_resistance_fuction(vector<double> ustar_line, vector<double> zo
   }
 };
 
-void aerodynamic_resistance_fuction(vector<double> ustar_line, int width_band, vector<double> &aerodynamic_resistance_line)
+void Products::aerodynamic_resistance_fuction(vector<double> ustar_line, int width_band, vector<double> &aerodynamic_resistance_line)
 {
   for (int col = 0; col < width_band; col++)
     aerodynamic_resistance_line[col] = log(20) / (ustar_line[col] * VON_KARMAN);
 };
 
-void correctionCycleSTEEP(int start_line, int end_line, uint32 width_band, Candidate hot_pixel, Candidate cold_pixel, double a, double b, 
-                          vector<vector<double>> surface_temperature_vector, vector<vector<double>> d0_vector, vector<vector<double>> zom_vector, 
-                          vector<vector<double>> kb1_vector, vector<vector<double>> pai_vector, vector<vector<double>> ustar_previous, 
-                          vector<vector<double>> aerodynamic_resistance_previous, vector<vector<double>> &ustar_vector, 
-                          vector<vector<double>> &aerodynamic_resistance_vector, vector<vector<double>> &sensible_heat_flux_vector)
+void Products::correctionCycleSTEEP(int start_line, int end_line, Candidate hot_pixel, Candidate cold_pixel, double a, double b)
 {
   for (int line = start_line; line < end_line; line++)
   {
     for (int col = 0; col < width_band; col++)
     {
       double DISP = d0_vector[line][col];
+      double dT_ini_terra = (a + b * (surface_temperature_vector[line][col] - 273.15));
 
-      double dT_ini_terra = a + b * (surface_temperature_vector[line][col] - 273.15);
-
+      // H_ini_terra
       sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / aerodynamic_resistance_previous[line][col];
 
-      double L = -1 * ((RHO * SPECIFIC_HEAT_AIR * pow(ustar_previous[line][col], 3) * surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * sensible_heat_flux_vector[line][col]));
+      // L_MB_terra
+      double ustar_pow_3 = ustar_previous[line][col] * ustar_previous[line][col] * ustar_previous[line][col];
+      double L = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * sensible_heat_flux_vector[line][col]));
 
       double y2 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
       double x200 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
@@ -425,8 +460,10 @@ void correctionCycleSTEEP(int start_line, int end_line, uint32 width_band, Candi
         psi200 = 2 * log((1 + x200) / 2) + log((1 + x200 * x200) / 2) - 2 * atan(x200) + 0.5 * M_PI;
       }
 
+      // u*
       double ust = (VON_KARMAN * ustar_previous[line][col]) / (log((10 - DISP) / zom_vector[line][col]) - psi200);
 
+      // rah
       double zoh_terra = zom_vector[line][col] / pow(exp(1.0), (kb1_vector[line][col]));
       double temp_rah1_corr_terra = (ust * VON_KARMAN);
       double temp_rah2_corr_terra = log((10 - DISP) / zom_vector[line][col]) - psi2;
@@ -438,18 +475,18 @@ void correctionCycleSTEEP(int start_line, int end_line, uint32 width_band, Candi
 
       if (line == hot_pixel.line && col == hot_pixel.col)
       {
-        hot_pixel.aerodynamic_resistance.push_back(aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col]);
+        hot_pixel.aerodynamic_resistance.push_back(rah);
       }
 
       if (line == cold_pixel.line && col == cold_pixel.col)
       {
-        cold_pixel.aerodynamic_resistance.push_back(aerodynamic_resistance_vector[cold_pixel.line][cold_pixel.col]);
+        cold_pixel.aerodynamic_resistance.push_back(rah);
       }
     }
   }
 };
 
-void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> pai_vector, vector<vector<double>> &sensible_heat_flux_vector)
+void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num)
 {
   using namespace std::chrono;
   int64_t general_time, initial_time, final_time;
@@ -475,12 +512,6 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
         ndvi_max = ndvi_line[col];
     }
   }
-
-  vector<vector<double>> d0_vector(height_band, vector<double>(width_band));
-  vector<vector<double>> zom_vector(height_band, vector<double>(width_band));
-  vector<vector<double>> ustar_vector(height_band, vector<double>(width_band));
-  vector<vector<double>> kb1_vector(height_band, vector<double>(width_band));
-  vector<vector<double>> aerodynamic_resistance_vector(height_band, vector<double>(width_band));
 
   for (int line = 0; line < height_band; line++)
   {
@@ -538,22 +569,22 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
     double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
     double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
 
-    for (int i = 0; i < threads_num; i++)
+    for (int j = 0; j < threads_num; j++)
     {
-      int start_line = i * lines_per_thread;
-      int end_line = (i == threads_num - 1) ? height_band : (i + 1) * lines_per_thread;
+      int start_line = j * lines_per_thread;
+      int end_line = (j == threads_num - 1) ? height_band : (j + 1) * lines_per_thread;
 
-      threads[i] = thread(
-        correctionCycleSTEEP,
-        start_line, end_line, width_band,
-        hot_pixel, cold_pixel, a, b,
-        surface_temperature_vector, d0_vector, zom_vector, kb1_vector, pai_vector,
-        ustar_previous, aerodynamic_resistance_previous,
-        ref(ustar_vector), ref(aerodynamic_resistance_vector), ref(sensible_heat_flux_vector));
+      // Create a lambda expression that calls the correctionCycleSTEEP function.
+      auto correctionCycleSTEEPFunction = [&](int start_line, int end_line, uint32 width_band, Candidate hot_pixel, Candidate cold_pixel, double a, double b)
+      {
+        this->correctionCycleSTEEP(start_line, end_line, hot_pixel, cold_pixel, a, b);
+      };
+
+      threads[j] = thread(correctionCycleSTEEPFunction, start_line, end_line, width_band, hot_pixel, cold_pixel, a, b);
     }
 
-    for (int i = 0; i < threads_num; i++)
-      threads[i].join();
+    for (int k = 0; k < threads_num; k++)
+      threads[k].join();
   }
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
@@ -582,181 +613,181 @@ void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Sta
   }
 };
 
-void sensible_heat_function_default(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> &sensible_heat_flux_vector)
-{
-  // ============== COMPUTE INITIAL RAH
+// void sensible_heat_function_default(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> &sensible_heat_flux_vector)
+// {
+//   // ============== COMPUTE INITIAL RAH
 
-  double ustar_station = (VON_KARMAN * station.v6) / (log(station.WIND_SPEED / station.SURFACE_ROUGHNESS));
-  double u200 = (ustar_station / VON_KARMAN) * log(200 / station.SURFACE_ROUGHNESS);
+//   double ustar_station = (VON_KARMAN * station.v6) / (log(station.WIND_SPEED / station.SURFACE_ROUGHNESS));
+//   double u200 = (ustar_station / VON_KARMAN) * log(200 / station.SURFACE_ROUGHNESS);
 
-  vector<vector<double>> d0_vector(height_band, vector<double>(width_band));
-  vector<vector<double>> zom_vector(height_band, vector<double>(width_band));
-  vector<vector<double>> ustar_vector(height_band, vector<double>(width_band));
-  vector<vector<double>> kb1_vector(height_band, vector<double>(width_band));
-  vector<vector<double>> aerodynamic_resistance_vector(height_band, vector<double>(width_band));
+//   vector<vector<double>> d0_vector(height_band, vector<double>(width_band));
+//   vector<vector<double>> zom_vector(height_band, vector<double>(width_band));
+//   vector<vector<double>> ustar_vector(height_band, vector<double>(width_band));
+//   vector<vector<double>> kb1_vector(height_band, vector<double>(width_band));
+//   vector<vector<double>> aerodynamic_resistance_vector(height_band, vector<double>(width_band));
 
-  for (int line = 0; line < height_band; line++)
-  {
-    zom_fuction(station.A_ZOM, station.B_ZOM, ndvi_vector[line], width_band, zom_vector[line]);
-    ustar_fuction(u200, zom_vector[line], width_band, ustar_vector[line]);
-    aerodynamic_resistance_fuction(ustar_vector[line], width_band, aerodynamic_resistance_vector[line]);
-  }
+//   for (int line = 0; line < height_band; line++)
+//   {
+//     zom_fuction(station.A_ZOM, station.B_ZOM, ndvi_vector[line], width_band, zom_vector[line]);
+//     ustar_fuction(u200, zom_vector[line], width_band, ustar_vector[line]);
+//     aerodynamic_resistance_fuction(ustar_vector[line], width_band, aerodynamic_resistance_vector[line]);
+//   }
 
-  // ============== COMPUTE FINAL RAH
+//   // ============== COMPUTE FINAL RAH
 
-  vector<vector<double>> ustar_previous(height_band, vector<double>(width_band));
-  vector<vector<double>> aerodynamic_resistance_previous(height_band, vector<double>(width_band));
+//   vector<vector<double>> ustar_previous(height_band, vector<double>(width_band));
+//   vector<vector<double>> aerodynamic_resistance_previous(height_band, vector<double>(width_band));
 
-  // Auxiliaries arrays calculation
-  double L[width_band];
-  double y_01_line[width_band], y_2_line[width_band], x_200_line[width_band];
-  double psi_01_line[width_band], psi_2_line[width_band], psi_200_line[width_band];
+//   // Auxiliaries arrays calculation
+//   double L[width_band];
+//   double y_01_line[width_band], y_2_line[width_band], x_200_line[width_band];
+//   double psi_01_line[width_band], psi_2_line[width_band], psi_200_line[width_band];
 
-  double hot_pixel_aerodynamic = aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col];
-  hot_pixel.aerodynamic_resistance.push_back(hot_pixel_aerodynamic);
+//   double hot_pixel_aerodynamic = aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col];
+//   hot_pixel.aerodynamic_resistance.push_back(hot_pixel_aerodynamic);
 
-  double cold_pixel_aerodynamic = aerodynamic_resistance_vector[cold_pixel.line][cold_pixel.col];
-  cold_pixel.aerodynamic_resistance.push_back(cold_pixel_aerodynamic);
+//   double cold_pixel_aerodynamic = aerodynamic_resistance_vector[cold_pixel.line][cold_pixel.col];
+//   cold_pixel.aerodynamic_resistance.push_back(cold_pixel_aerodynamic);
 
-  double H_pq_terra;
-  double H_pf_terra;
-  double rah_ini_pq_terra;
-  double rah_ini_pf_terra;
-  double rah_final_pq_terra;
-  double rah_final_pf_terra;
+//   double H_pq_terra;
+//   double H_pf_terra;
+//   double rah_ini_pq_terra;
+//   double rah_ini_pf_terra;
+//   double rah_final_pq_terra;
+//   double rah_final_pf_terra;
 
-  int i = 0;
-  bool Error = true;
-  while (Error)
-  {
-    ustar_previous = ustar_vector;
-    aerodynamic_resistance_previous = aerodynamic_resistance_vector;
+//   int i = 0;
+//   bool Error = true;
+//   while (Error)
+//   {
+//     ustar_previous = ustar_vector;
+//     aerodynamic_resistance_previous = aerodynamic_resistance_vector;
 
-    H_pq_terra = hot_pixel.net_radiation - hot_pixel.soil_heat_flux;
-    H_pf_terra = cold_pixel.net_radiation - cold_pixel.soil_heat_flux;
+//     H_pq_terra = hot_pixel.net_radiation - hot_pixel.soil_heat_flux;
+//     H_pf_terra = cold_pixel.net_radiation - cold_pixel.soil_heat_flux;
 
-    rah_ini_pq_terra = hot_pixel.aerodynamic_resistance[i];
-    rah_ini_pf_terra = cold_pixel.aerodynamic_resistance[i];
+//     rah_ini_pq_terra = hot_pixel.aerodynamic_resistance[i];
+//     rah_ini_pf_terra = cold_pixel.aerodynamic_resistance[i];
 
-    double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
-    double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
+//     double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
+//     double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
 
-    double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
-    double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
+//     double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
+//     double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
 
-    for (int line = 0; line < height_band; line++)
-    {
-      for (int col = 0; col < width_band; col++)
-      {
-        sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (surface_temperature_vector[line][col] - 273.15)) / aerodynamic_resistance_previous[line][col];
+//     for (int line = 0; line < height_band; line++)
+//     {
+//       for (int col = 0; col < width_band; col++)
+//       {
+//         sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (surface_temperature_vector[line][col] - 273.15)) / aerodynamic_resistance_previous[line][col];
 
-        double ustar_pow_3 = ustar_previous[line][col] * ustar_previous[line][col] * ustar_previous[line][col];
-        L[col] = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * sensible_heat_flux_vector[line][col]));
+//         double ustar_pow_3 = ustar_previous[line][col] * ustar_previous[line][col] * ustar_previous[line][col];
+//         L[col] = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * sensible_heat_flux_vector[line][col]));
 
-        y_01_line[col] = pow((1 - (16 * 0.1) / L[col]), 0.25);
-        y_2_line[col] = pow((1 - (16 * 2) / L[col]), 0.25);
-        x_200_line[col] = pow((1 - (16 * 200) / L[col]), 0.25);
+//         y_01_line[col] = pow((1 - (16 * 0.1) / L[col]), 0.25);
+//         y_2_line[col] = pow((1 - (16 * 2) / L[col]), 0.25);
+//         x_200_line[col] = pow((1 - (16 * 200) / L[col]), 0.25);
 
-        if (!isnan(L[col]) && L[col] > 0)
-          psi_01_line[col] = -5 * (0.1 / L[col]);
-        else
-          psi_01_line[col] = 2 * log((1 + y_01_line[col] * y_01_line[col]) / 2);
+//         if (!isnan(L[col]) && L[col] > 0)
+//           psi_01_line[col] = -5 * (0.1 / L[col]);
+//         else
+//           psi_01_line[col] = 2 * log((1 + y_01_line[col] * y_01_line[col]) / 2);
 
-        if (!isnan(L[col]) && L[col] > 0)
-          psi_2_line[col] = -5 * (2 / L[col]);
-        else
-          psi_2_line[col] = 2 * log((1 + y_2_line[col] * y_2_line[col]) / 2);
+//         if (!isnan(L[col]) && L[col] > 0)
+//           psi_2_line[col] = -5 * (2 / L[col]);
+//         else
+//           psi_2_line[col] = 2 * log((1 + y_2_line[col] * y_2_line[col]) / 2);
 
-        if (!isnan(L[col]) && L[col] > 0)
-          psi_200_line[col] = -5 * (2 / L[col]);
-        else
-          psi_200_line[col] = 2 * log((1 + x_200_line[col]) / 2) + log((1 + x_200_line[col] * x_200_line[col]) / 2) - 2 * atan(x_200_line[col]) + 0.5 * PI;
+//         if (!isnan(L[col]) && L[col] > 0)
+//           psi_200_line[col] = -5 * (2 / L[col]);
+//         else
+//           psi_200_line[col] = 2 * log((1 + x_200_line[col]) / 2) + log((1 + x_200_line[col] * x_200_line[col]) / 2) - 2 * atan(x_200_line[col]) + 0.5 * PI;
 
-        double ust = (VON_KARMAN * u200) / (log(200 / zom_vector[line][col]) - psi_200_line[col]);
-        ustar_vector[line][col] = ust;
+//         double ust = (VON_KARMAN * u200) / (log(200 / zom_vector[line][col]) - psi_200_line[col]);
+//         ustar_vector[line][col] = ust;
 
-        rah_final_pq_terra = (log(2 / 0.1) - psi_2_line[col] + psi_01_line[col]) / (ust * VON_KARMAN);
-        aerodynamic_resistance_vector[line][col] = rah_final_pq_terra;
+//         rah_final_pq_terra = (log(2 / 0.1) - psi_2_line[col] + psi_01_line[col]) / (ust * VON_KARMAN);
+//         aerodynamic_resistance_vector[line][col] = rah_final_pq_terra;
 
-        if (line == hot_pixel.line && col == hot_pixel.col)
-        {
-          hot_pixel.aerodynamic_resistance.push_back(rah_final_pq_terra);
-        }
-      }
-    }
+//         if (line == hot_pixel.line && col == hot_pixel.col)
+//         {
+//           hot_pixel.aerodynamic_resistance.push_back(rah_final_pq_terra);
+//         }
+//       }
+//     }
 
-    Error = (fabs(1 - rah_ini_pq_terra / rah_final_pq_terra) >= 0.05);
-    i++;
-  }
+//     Error = (fabs(1 - rah_ini_pq_terra / rah_final_pq_terra) >= 0.05);
+//     i++;
+//   }
 
-  // ============== COMPUTE H
+//   // ============== COMPUTE H
 
-  double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
-  double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
+//   double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
+//   double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
 
-  double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
-  double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
+//   double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
+//   double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
 
-  for (int line = 0; line < height_band; line++)
-  {
-    for (int col = 0; col < width_band; col++)
-    {
-      sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (surface_temperature_vector[line][col] - 273.15)) / aerodynamic_resistance_vector[line][col];
+//   for (int line = 0; line < height_band; line++)
+//   {
+//     for (int col = 0; col < width_band; col++)
+//     {
+//       sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (surface_temperature_vector[line][col] - 273.15)) / aerodynamic_resistance_vector[line][col];
 
-      if (!isnan(sensible_heat_flux_vector[line][col]) && sensible_heat_flux_vector[line][col] > (net_radiation_vector[line][col] - soil_heat_vector[line][col]))
-      {
-        sensible_heat_flux_vector[line][col] = net_radiation_vector[line][col] - soil_heat_vector[line][col];
-      }
-    }
-  }
-};
+//       if (!isnan(sensible_heat_flux_vector[line][col]) && sensible_heat_flux_vector[line][col] > (net_radiation_vector[line][col] - soil_heat_vector[line][col]))
+//       {
+//         sensible_heat_flux_vector[line][col] = net_radiation_vector[line][col] - soil_heat_vector[line][col];
+//       }
+//     }
+//   }
+// };
 
-void latent_heat_flux_function(vector<double> net_radiation_line, vector<double> soil_heat_flux_line, vector<double> sensible_heat_flux_line, int width_band, vector<double> &latent_heat_flux)
+void Products::latent_heat_flux_function(int width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
-    latent_heat_flux[col] = net_radiation_line[col] - soil_heat_flux_line[col] - sensible_heat_flux_line[col];
+    this->latent_heat_flux_vector[line][col] = this->net_radiation_vector[line][col] - this->soil_heat_vector[line][col] - this->sensible_heat_flux_vector[line][col];
 };
 
-void net_radiation_24h_function(vector<double> albedo_line, double Ra24h, double Rs24h, int width_band, vector<double> &net_radiation_24h_line)
+void Products::net_radiation_24h_function(double Ra24h, double Rs24h, int width_band, int line)
 {
   int FL = 110;
 
   for (int col = 0; col < width_band; col++)
-    net_radiation_24h_line[col] = (1 - albedo_line[col]) * Rs24h - FL * Rs24h / Ra24h;
+    this->net_radiation_24h_vector[line][col] = (1 - this->albedo_vector[line][col]) * Rs24h - FL * Rs24h / Ra24h;
 };
 
-void evapotranspiration_fraction_fuction(vector<double> latent_heat_flux_line, vector<double> net_radiation_line, vector<double> soil_heat_line, int width_band, vector<double> &evapotranspiration_fraction_line)
+void Products::evapotranspiration_fraction_fuction(int width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
-    double latent = latent_heat_flux_line[col];
-    double net_rad = net_radiation_line[col];
-    double soil_heat = soil_heat_line[col];
+    double latent = this->latent_heat_flux_vector[line][col];
+    double net_rad = this->net_radiation_vector[line][col];
+    double soil_heat = this->soil_heat_vector[line][col];
 
-    evapotranspiration_fraction_line[col] = latent / (net_rad - soil_heat);
+    this->evapotranspiration_fraction_vector[line][col] = latent / (net_rad - soil_heat);
   }
 };
 
-void sensible_heat_flux_24h_fuction(vector<double> evapotranspiration_fraction_line, vector<double> net_radiation_24h_line, int width_band, vector<double> &sensible_heat_flux_24h_line)
+void Products::sensible_heat_flux_24h_fuction(int width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
-    sensible_heat_flux_24h_line[col] = (1 - evapotranspiration_fraction_line[col]) * net_radiation_24h_line[col];
+    this->sensible_heat_flux_24h_vector[line][col] = (1 - this->evapotranspiration_fraction_vector[line][col]) * this->net_radiation_24h_vector[line][col];
 };
 
-void latent_heat_flux_24h_function(vector<double> evapotranspiration_fraction_line, vector<double> net_radiation_24h_line, int width_band, vector<double> &latent_heat_flux_24h_line)
+void Products::latent_heat_flux_24h_function(int width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
-    latent_heat_flux_24h_line[col] = evapotranspiration_fraction_line[col] * net_radiation_24h_line[col];
+    this->latent_heat_flux_24h_vector[line][col] = this->evapotranspiration_fraction_vector[line][col] * this->net_radiation_24h_vector[line][col];
 };
 
-void evapotranspiration_24h_function(vector<double> latent_heat_flux_24h_line, Station station, int width_band, vector<double> &evapotranspiration_24h_line)
+void Products::evapotranspiration_24h_function(Station station, int width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
-    evapotranspiration_24h_line[col] = (latent_heat_flux_24h_line[col] * 86400) / ((2.501 - 0.00236 * (station.v7_max + station.v7_min) / 2) * 1e+6);
+    this->evapotranspiration_24h_vector[line][col] = (this->latent_heat_flux_24h_vector[line][col] * 86400) / ((2.501 - 0.00236 * (station.v7_max + station.v7_min) / 2) * 1e+6);
 };
 
-void evapotranspiration_function(vector<double> net_radiation_24h_line, vector<double> evapotranspiration_fraction_line, int width_band, vector<double> &evapotranspiration_24h_line)
+void Products::evapotranspiration_function(int width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
-    evapotranspiration_24h_line[col] = net_radiation_24h_line[col] * evapotranspiration_fraction_line[col] * 0.035;
+    this->evapotranspiration_vector[line][col] = this->net_radiation_24h_vector[line][col] * this->evapotranspiration_fraction_vector[line][col] * 0.035;
 };
