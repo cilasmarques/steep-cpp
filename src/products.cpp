@@ -295,7 +295,7 @@ void Products::soil_heat_flux_function(uint32 width_band, int line)
   }
 };
 
-void Products::d0_fuction(vector<double> pai_line, int width_band, vector<double> &d0_line)
+void Products::d0_fuction(int line)
 {
   double CD1 = 20.6;
   double HGHT = 4;
@@ -303,7 +303,7 @@ void Products::d0_fuction(vector<double> pai_line, int width_band, vector<double
   for (int col = 0; col < width_band; col++)
   {
 
-    double pai = pai_line[col];
+    double pai = this->pai_vector[line][col];
     double cd1_pai_root = sqrt(CD1 * pai);
 
     double DISP = HGHT * ((1 - (1 / cd1_pai_root)) + (pow(exp(1.0), -cd1_pai_root) / cd1_pai_root));
@@ -312,11 +312,11 @@ void Products::d0_fuction(vector<double> pai_line, int width_band, vector<double
       DISP = 0;
     }
 
-    d0_line[col] = DISP;
+    this->d0_vector[line][col] = DISP;
   }
 };
 
-void Products::kb_function(vector<double> ustar_line, vector<double> zom_line, vector<double> pai_line, vector<double> ndvi_line, double ndvi_max, double ndvi_min, int width_band, vector<double> &kb1_line)
+void Products::kb_function(double ndvi_max, double ndvi_min, int line)
 {
   double HGHT = 4;
 
@@ -333,9 +333,9 @@ void Products::kb_function(vector<double> ustar_line, vector<double> zom_line, v
 
   for (int col = 0; col < width_band; col++)
   {
-    double zom = zom_line[col];
-    double u_ast_ini_terra = ustar_line[col];
-    double PAI = pai_line[col];
+    double zom = this->zom_vector[line][col];
+    double u_ast_ini_terra = this->ustar_vector[line][col];
+    double PAI = this->pai_vector[line][col];
 
     double Re_star = (u_ast_ini_terra * 0.009) / visc;
     double Ct_star = pow(pr, -0.667) * pow(Re_star, -0.5);
@@ -346,21 +346,21 @@ void Products::kb_function(vector<double> ustar_line, vector<double> zom_line, v
     double kb1_sec_part = (beta * VON_KARMAN * (zom / HGHT)) / Ct_star;
     double kb1s = (pow(Re_star, 0.25) * 2.46) - 2;
 
-    double fc = 1 - pow((ndvi_line[col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
+    double fc = 1 - pow((this->ndvi_vector[line][col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
     double fs = 1 - fc;
 
     double soil_moisture_day_rel = 0.33;
 
     double SF = sf_c + (1 / (1 + pow(exp(1.0), (sf_d - (sf_e * soil_moisture_day_rel)))));
 
-    kb1_line[col] = ((kb1_fst_part * pow(fc, 2)) +
-                     (kb1_sec_part * pow(fc, 2) * pow(fs, 2)) +
-                     (pow(fs, 2) * kb1s)) *
-                    SF;
+    this->kb1_vector[line][col] = ((kb1_fst_part * pow(fc, 2)) +
+                                   (kb1_sec_part * pow(fc, 2) * pow(fs, 2)) +
+                                   (pow(fs, 2) * kb1s)) *
+                                  SF;
   }
 };
 
-void Products::zom_fuction(double A_ZOM, double B_ZOM, vector<double> ndvi_line, vector<double> d0_line, vector<double> pai_line, int width_band, vector<double> &zom_line)
+void Products::zom_fuction(double A_ZOM, double B_ZOM, int line)
 {
   double HGHT = 4;
   double CD = 0.01;
@@ -370,12 +370,12 @@ void Products::zom_fuction(double A_ZOM, double B_ZOM, vector<double> ndvi_line,
   double gama;
   for (int col = 0; col < width_band; col++)
   {
-    gama = pow((CD + CR * (pai_line[col] / 2)), -0.5);
+    gama = pow((CD + CR * (this->pai_vector[line][col] / 2)), -0.5);
 
     if (gama < 3.3)
       gama = 3.3;
 
-    zom_line[col] = (HGHT - d0_line[col]) * pow(exp(1.0), (-VON_KARMAN * gama) + PSICORR);
+    this->zom_vector[line][col] = (HGHT - this->d0_vector[line][col]) * pow(exp(1.0), (-VON_KARMAN * gama) + PSICORR);
   }
 };
 
@@ -385,15 +385,15 @@ void Products::zom_fuction(double A_ZOM, double B_ZOM, vector<double> ndvi_line,
     zom_line[col] = exp(A_ZOM + B_ZOM * ndvi_line[col]);
 };
 
-void Products::ustar_fuction(double u10, vector<double> zom_line, vector<double> d0_line, int width_band, vector<double> &ustar_line)
+void Products::ustar_fuction(double u10, int line)
 {
   double zu = 10;
 
   for (int col = 0; col < width_band; col++)
   {
-    double DISP = d0_line[col];
-    double zom = zom_line[col];
-    ustar_line[col] = (u10 * VON_KARMAN) / std::log((zu - DISP) / zom);
+    double DISP = this->d0_vector[line][col];
+    double zom = this->zom_vector[line][col];
+    this->ustar_vector[line][col] = (u10 * VON_KARMAN) / std::log((zu - DISP) / zom);
   }
 };
 
@@ -403,22 +403,22 @@ void Products::ustar_fuction(double u200, vector<double> zom_line, int width_ban
     ustar_line[col] = (VON_KARMAN * u200) / log(200 / zom_line[col]);
 };
 
-void Products::aerodynamic_resistance_fuction(vector<double> ustar_line, vector<double> zom_line, vector<double> d0_line, vector<double> kb1_line, int width_band, vector<double> &aerodynamic_resistance_line)
+void Products::aerodynamic_resistance_fuction(int line)
 {
   double zu = 10.0;
 
   for (int col = 0; col < width_band; col++)
   {
-    double DISP = d0_line[col];
-    double zom = zom_line[col];
-    double zoh_terra = zom / pow(exp(1.0), (kb1_line[col]));
+    double DISP = this->d0_vector[line][col];
+    double zom = this->zom_vector[line][col];
+    double zoh_terra = zom / pow(exp(1.0), (this->kb1_vector[line][col]));
 
     double temp_kb_1_terra = log(zom / zoh_terra);
-    double temp_rah1_terra = (1 / (ustar_line[col] * VON_KARMAN));
+    double temp_rah1_terra = (1 / (this->ustar_vector[line][col] * VON_KARMAN));
     double temp_rah2 = log(((zu - DISP) / zom));
     double temp_rah3_terra = temp_rah1_terra * temp_kb_1_terra;
 
-    aerodynamic_resistance_line[col] = temp_rah1_terra * temp_rah2 + temp_rah3_terra;
+    this->aerodynamic_resistance_vector[line][col] = temp_rah1_terra * temp_rah2 + temp_rah3_terra;
   }
 };
 
@@ -432,23 +432,23 @@ void Products::correctionCycleSTEEP(int start_line, int end_line, Candidate hot_
 {
   for (int line = start_line; line < end_line; line++)
   {
-    for (int col = 0; col < width_band; col++)
+    for (int col = 0; col < this->width_band; col++)
     {
-      double DISP = d0_vector[line][col];
-      double dT_ini_terra = (a + b * (surface_temperature_vector[line][col] - 273.15));
+      double DISP = this->d0_vector[line][col];
+      double dT_ini_terra = (a + b * (this->surface_temperature_vector[line][col] - 273.15));
 
       // H_ini_terra
-      sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / aerodynamic_resistance_previous[line][col];
+      this->sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / this->aerodynamic_resistance_previous[line][col];
 
       // L_MB_terra
-      double ustar_pow_3 = ustar_previous[line][col] * ustar_previous[line][col] * ustar_previous[line][col];
-      double L = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * sensible_heat_flux_vector[line][col]));
+      double ustar_pow_3 = this->ustar_previous[line][col] * this->ustar_previous[line][col] * this->ustar_previous[line][col];
+
+      double L = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * this->surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * this->sensible_heat_flux_vector[line][col]));
 
       double y2 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
       double x200 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
 
-      double psi01, psi2, psi200;
-
+      double psi2, psi200;
       if (!isnan(L) && L > 0)
       {
         psi2 = -5 * ((10 - DISP) / L);
@@ -461,27 +461,17 @@ void Products::correctionCycleSTEEP(int start_line, int end_line, Candidate hot_
       }
 
       // u*
-      double ust = (VON_KARMAN * ustar_previous[line][col]) / (log((10 - DISP) / zom_vector[line][col]) - psi200);
+      double ust = (VON_KARMAN * this->ustar_previous[line][col]) / (log((10 - DISP) / this->zom_vector[line][col]) - psi200);
 
       // rah
-      double zoh_terra = zom_vector[line][col] / pow(exp(1.0), (kb1_vector[line][col]));
+      double zoh_terra = this->zom_vector[line][col] / pow(exp(1.0), (this->kb1_vector[line][col]));
       double temp_rah1_corr_terra = (ust * VON_KARMAN);
-      double temp_rah2_corr_terra = log((10 - DISP) / zom_vector[line][col]) - psi2;
-      double temp_rah3_corr_terra = temp_rah1_corr_terra * log(zom_vector[line][col] / zoh_terra);
+      double temp_rah2_corr_terra = log((10 - DISP) / this->zom_vector[line][col]) - psi2;
+      double temp_rah3_corr_terra = temp_rah1_corr_terra * log(this->zom_vector[line][col] / zoh_terra);
       double rah = (temp_rah1_corr_terra * temp_rah2_corr_terra) + temp_rah3_corr_terra;
 
-      ustar_vector[line][col] = ust;
-      aerodynamic_resistance_vector[line][col] = rah;
-
-      if (line == hot_pixel.line && col == hot_pixel.col)
-      {
-        hot_pixel.aerodynamic_resistance.push_back(rah);
-      }
-
-      if (line == cold_pixel.line && col == cold_pixel.col)
-      {
-        cold_pixel.aerodynamic_resistance.push_back(rah);
-      }
+      this->ustar_vector[line][col] = ust;
+      this->aerodynamic_resistance_vector[line][col] = rah;
     }
   }
 };
@@ -515,22 +505,14 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
 
   for (int line = 0; line < height_band; line++)
   {
-    d0_fuction(pai_vector[line], width_band, d0_vector[line]);
-    zom_fuction(station.A_ZOM, station.B_ZOM, ndvi_vector[line], d0_vector[line], pai_vector[line], width_band, zom_vector[line]);
-    ustar_fuction(u10, zom_vector[line], d0_vector[line], width_band, ustar_vector[line]);
-    kb_function(ustar_vector[line], zom_vector[line], pai_vector[line], ndvi_vector[line], ndvi_max, ndvi_min, width_band, kb1_vector[line]);
-    aerodynamic_resistance_fuction(ustar_vector[line], zom_vector[line], d0_vector[line], kb1_vector[line], width_band, aerodynamic_resistance_vector[line]);
+    d0_fuction(line);
+    zom_fuction(station.A_ZOM, station.B_ZOM, line);
+    ustar_fuction(u10, line);
+    kb_function(ndvi_max, ndvi_min, line);
+    aerodynamic_resistance_fuction(line);
   }
 
   // ============== COMPUTE FINAL RAH
-
-  vector<vector<double>> ustar_previous(height_band, vector<double>(width_band));
-  vector<vector<double>> aerodynamic_resistance_previous(height_band, vector<double>(width_band));
-
-  // Auxiliaries arrays calculation
-  double L[width_band];
-  double y_01_line[width_band], y_2_line[width_band], x_200_line[width_band];
-  double psi_01_line[width_band], psi_2_line[width_band], psi_200_line[width_band];
 
   double hot_pixel_aerodynamic = aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col];
   hot_pixel.aerodynamic_resistance.push_back(hot_pixel_aerodynamic);
@@ -575,16 +557,22 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
       int end_line = (j == threads_num - 1) ? height_band : (j + 1) * lines_per_thread;
 
       // Create a lambda expression that calls the correctionCycleSTEEP function.
-      auto correctionCycleSTEEPFunction = [&](int start_line, int end_line, uint32 width_band, Candidate hot_pixel, Candidate cold_pixel, double a, double b)
+      auto correctionCycleSTEEPFunction = [&](int start_line, int end_line, Candidate hot_pixel, Candidate cold_pixel, double a, double b)
       {
         this->correctionCycleSTEEP(start_line, end_line, hot_pixel, cold_pixel, a, b);
       };
 
-      threads[j] = thread(correctionCycleSTEEPFunction, start_line, end_line, width_band, hot_pixel, cold_pixel, a, b);
+      threads[j] = thread(correctionCycleSTEEPFunction, start_line, end_line, hot_pixel, cold_pixel, a, b);
     }
 
     for (int k = 0; k < threads_num; k++)
       threads[k].join();
+
+    double rah_hot = this->aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col];
+    hot_pixel.aerodynamic_resistance.push_back(rah_hot);
+
+    double rah_cold = this->aerodynamic_resistance_vector[cold_pixel.line][cold_pixel.col];
+    cold_pixel.aerodynamic_resistance.push_back(rah_cold);
   }
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
@@ -603,11 +591,11 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   {
     for (int col = 0; col < width_band; col++)
     {
-      sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (surface_temperature_vector[line][col] - 273.15)) / aerodynamic_resistance_vector[line][col];
+      this->sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (this->surface_temperature_vector[line][col] - 273.15)) / this->aerodynamic_resistance_vector[line][col];
 
-      if (!isnan(sensible_heat_flux_vector[line][col]) && sensible_heat_flux_vector[line][col] > (net_radiation_vector[line][col] - soil_heat_vector[line][col]))
+      if (!isnan(this->sensible_heat_flux_vector[line][col]) && this->sensible_heat_flux_vector[line][col] > (this->net_radiation_vector[line][col] - this->soil_heat_vector[line][col]))
       {
-        sensible_heat_flux_vector[line][col] = net_radiation_vector[line][col] - soil_heat_vector[line][col];
+        this->sensible_heat_flux_vector[line][col] = this->net_radiation_vector[line][col] - this->soil_heat_vector[line][col];
       }
     }
   }

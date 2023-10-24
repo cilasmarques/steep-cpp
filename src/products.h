@@ -66,17 +66,17 @@ struct Products
   void net_radiation_function(uint32 width_band, int line);
   void soil_heat_flux_function(uint32 width_band, int line);
 
-  void d0_fuction(vector<double> pai_line, int width_band, vector<double> &d0_line);
-  void kb_function(vector<double> ustar_line, vector<double> zom_line, vector<double> pai_line, vector<double> ndvi_line, double ndvi_max, double ndvi_min, int width_band, vector<double> &kb1_line);
+  void d0_fuction(int line);
+  void kb_function(double ndvi_max, double ndvi_min, int line);
 
-  void zom_fuction(double A_ZOM, double B_ZOM, vector<double> ndvi_line, vector<double> d0_line, vector<double> pai_line, int width_band, vector<double> &zom_line);
+  void zom_fuction(double A_ZOM, double B_ZOM, int line);
   void zom_fuction(double A_ZOM, double B_ZOM, vector<double> ndvi_line, int width_band, vector<double> &zom_line);
 
-  void ustar_fuction(double u10, vector<double> zom_line, vector<double> d0_line, int width_band, vector<double> &ustar_line);
+  void ustar_fuction(double u10, int line);
   void ustar_fuction(double u200, vector<double> zom_line, int width_band, vector<double> &ustar_line);
 
   void aerodynamic_resistance_fuction(vector<double> ustar_line, int width_band, vector<double> &aerodynamic_resistance_line);
-  void aerodynamic_resistance_fuction(vector<double> ustar_line, vector<double> zom_line, vector<double> d0_line, vector<double> kb1_line, int width_band, vector<double> &aerodynamic_resistance_line);
+  void aerodynamic_resistance_fuction(int line);
 
   void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num);
   void sensible_heat_function_default(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num);
