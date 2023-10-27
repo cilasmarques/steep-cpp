@@ -68,20 +68,15 @@ struct Products
 
   void d0_fuction(int line);
   void kb_function(double ndvi_max, double ndvi_min, int line);
-
   void zom_fuction(double A_ZOM, double B_ZOM, int line);
   void zom_fuction(double A_ZOM, double B_ZOM, vector<double> ndvi_line, int width_band, vector<double> &zom_line);
-
   void ustar_fuction(double u10, int line);
   void ustar_fuction(double u200, vector<double> zom_line, int width_band, vector<double> &ustar_line);
-
   void aerodynamic_resistance_fuction(vector<double> ustar_line, int width_band, vector<double> &aerodynamic_resistance_line);
   void aerodynamic_resistance_fuction(int line);
 
   void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num);
   void sensible_heat_function_default(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num);
-
-  void correctionCycleSTEEP(int start_line, int end_line, Candidate hot_pixel, Candidate cold_pixel, double a, double b);
 
   void latent_heat_flux_function(int width_band, int line);
   void net_radiation_24h_function(double Ra24h, double Rs24h, int width_band, int line);
@@ -90,4 +85,8 @@ struct Products
   void latent_heat_flux_24h_function(int width_band, int line);
   void evapotranspiration_24h_function(Station station, int width_band, int line);
   void evapotranspiration_function(int width_band, int line);
+
+  void rah_correction_cycle_STEEP(int start_line, int end_line, Candidate hot_pixel, Candidate cold_pixel, double a, double b);
+  void rah_initial_value_STEEP(Station station, int start_line, int end_line, double ndvi_min, double ndvi_max, double u10);
+  void sensible_heat_flux_final(int start_line, int end_line, double a, double b);
 };

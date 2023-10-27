@@ -428,81 +428,23 @@ void Products::aerodynamic_resistance_fuction(vector<double> ustar_line, int wid
     aerodynamic_resistance_line[col] = log(20) / (ustar_line[col] * VON_KARMAN);
 };
 
-void Products::correctionCycleSTEEP(int start_line, int end_line, Candidate hot_pixel, Candidate cold_pixel, double a, double b)
-{
-  using namespace std::chrono;
-  int64_t general_time, initial_time, final_time;
-  system_clock::time_point begin, end;
-
-  begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  for (int line = start_line; line < end_line; line++)
-  {
-    for (int col = 0; col < this->width_band; col++)
-    {
-      double DISP = this->d0_vector[line][col];
-      double dT_ini_terra = (a + b * (this->surface_temperature_vector[line][col] - 273.15));
-
-      // H_ini_terra
-      this->sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / this->aerodynamic_resistance_previous[line][col];
-
-      // L_MB_terra
-      double ustar_pow_3 = this->ustar_previous[line][col] * this->ustar_previous[line][col] * this->ustar_previous[line][col];
-
-      double L = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * this->surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * this->sensible_heat_flux_vector[line][col]));
-
-      double y2 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
-      double x200 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
-
-      double psi2, psi200;
-      if (!isnan(L) && L > 0)
-      {
-        psi2 = -5 * ((10 - DISP) / L);
-        psi200 = -5 * ((10 - DISP) / L);
-      }
-      else
-      {
-        psi2 = 2 * log((1 + y2 * y2) / 2);
-        psi200 = 2 * log((1 + x200) / 2) + log((1 + x200 * x200) / 2) - 2 * atan(x200) + 0.5 * M_PI;
-      }
-
-      // u*
-      double ust = (VON_KARMAN * this->ustar_previous[line][col]) / (log((10 - DISP) / this->zom_vector[line][col]) - psi200);
-
-      // rah
-      double zoh_terra = this->zom_vector[line][col] / pow(exp(1.0), (this->kb1_vector[line][col]));
-      double temp_rah1_corr_terra = (ust * VON_KARMAN);
-      double temp_rah2_corr_terra = log((10 - DISP) / this->zom_vector[line][col]) - psi2;
-      double temp_rah3_corr_terra = temp_rah1_corr_terra * log(this->zom_vector[line][col] / zoh_terra);
-      double rah = (temp_rah1_corr_terra * temp_rah2_corr_terra) + temp_rah3_corr_terra;
-
-      this->ustar_vector[line][col] = ust;
-      this->aerodynamic_resistance_vector[line][col] = rah;
-    }
-  }
-  end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  // std::cout << "P2 - RAH - TEMPO DA THREAD: " << start_line << "x" << end_line << ", " << general_time << ", " << initial_time << ", " << final_time << std::endl;
-};
-
 void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num)
 {
   using namespace std::chrono;
   int64_t general_time, initial_time, final_time;
   system_clock::time_point begin, end;
 
-  int64_t general_time_tmp, initial_time_tmp, final_time_tmp;
-  system_clock::time_point begin_tmp, end_tmp;
+  thread threads[threads_num];
+  int lines_per_thread = height_band / threads_num;
 
-  // ============== COMPUTE INITIAL RAH
+  // ============== COMPUTE NDVI MIN MAX
 
   begin = system_clock::now();
   initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   double ustar_station = (VON_KARMAN * station.v6) / (log(station.WIND_SPEED / station.SURFACE_ROUGHNESS));
   double u10 = (ustar_station / VON_KARMAN) * log(10 / station.SURFACE_ROUGHNESS);
   double ndvi_min = 1.0;
-  double ndvi_max = 0.0;
+  double ndvi_max = -1.0;
   for (int line = 0; line < height_band; line++)
   {
     vector<double> ndvi_line = ndvi_vector[line];
@@ -519,23 +461,28 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   std::cout << "P2 - RAH - SERIAL - TEMPO NDVI MIN e MAX, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
+  // ============== COMPUTE INITIAL RAH
 
   begin = system_clock::now();
   initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  for (int line = 0; line < height_band; line++)
+  for (int j = 0; j < threads_num; j++)
   {
-    d0_fuction(line);
-    zom_fuction(station.A_ZOM, station.B_ZOM, line);
-    ustar_fuction(u10, line);
-    kb_function(ndvi_max, ndvi_min, line);
-    aerodynamic_resistance_fuction(line);
+    int start_line = j * lines_per_thread;
+    int end_line = (j == threads_num - 1) ? height_band : (j + 1) * lines_per_thread;
+    auto compute_initial_rah_function = [&](Station station, int start_line, int end_line, double ndvi_min, double ndvi_max, double u10)
+    {
+      this->rah_initial_value_STEEP(station, start_line, end_line, ndvi_min, ndvi_max, u10);
+    };
+
+    threads[j] = thread(compute_initial_rah_function, station, start_line, end_line, ndvi_min, ndvi_max, u10);
   }
+
+  for (int k = 0; k < threads_num; k++)
+    threads[k].join();
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   std::cout << "P2 - RAH - SERIAL - TEMPO DO RAH INICIAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
-
-
 
   // ============== COMPUTE FINAL RAH
 
@@ -555,9 +502,6 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   double H_pq_terra;
   double rah_ini_pq_terra;
   double rah_ini_pf_terra;
-
-  thread threads[threads_num];
-  int lines_per_thread = height_band / threads_num;
 
   for (int i = 0; i < 2; i++)
   {
@@ -579,28 +523,20 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
     double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
     double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
 
-    begin_tmp = system_clock::now();
-    initial_time_tmp = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     for (int j = 0; j < threads_num; j++)
     {
       int start_line = j * lines_per_thread;
       int end_line = (j == threads_num - 1) ? height_band : (j + 1) * lines_per_thread;
-
-      // Create a lambda expression that calls the correctionCycleSTEEP function.
-      auto correctionCycleSTEEPFunction = [&](int start_line, int end_line, Candidate hot_pixel, Candidate cold_pixel, double a, double b)
+      auto rah_correction_cycle_STEEP_TRD = [&](int start_line, int end_line, Candidate hot_pixel, Candidate cold_pixel, double a, double b)
       {
-        this->correctionCycleSTEEP(start_line, end_line, hot_pixel, cold_pixel, a, b);
+        this->rah_correction_cycle_STEEP(start_line, end_line, hot_pixel, cold_pixel, a, b);
       };
 
-      threads[j] = thread(correctionCycleSTEEPFunction, start_line, end_line, hot_pixel, cold_pixel, a, b);
+      threads[j] = thread(rah_correction_cycle_STEEP_TRD, start_line, end_line, hot_pixel, cold_pixel, a, b);
     }
 
     for (int k = 0; k < threads_num; k++)
       threads[k].join();
-    end_tmp = system_clock::now();
-    general_time_tmp = duration_cast<milliseconds>(end_tmp - begin_tmp).count();
-    final_time_tmp = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-    std::cout << "P2 - RAH - ETAPA PARALELIZADA - TEMPO DO LAÇO " << i << ": , " << general_time_tmp << ", " << initial_time_tmp << ", " << final_time_tmp << std::endl;
 
     double rah_hot = this->aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col];
     hot_pixel.aerodynamic_resistance.push_back(rah_hot);
@@ -621,18 +557,20 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
   double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
 
-  for (int line = 0; line < height_band; line++)
+  for (int j = 0; j < threads_num; j++)
   {
-    for (int col = 0; col < width_band; col++)
+    int start_line = j * lines_per_thread;
+    int end_line = (j == threads_num - 1) ? height_band : (j + 1) * lines_per_thread;
+    auto sensible_heat_flux_final_TRD = [&](int start_line, int end_line, double a, double b)
     {
-      this->sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (this->surface_temperature_vector[line][col] - 273.15)) / this->aerodynamic_resistance_vector[line][col];
+      this->sensible_heat_flux_final(start_line, end_line, a, b);
+    };
 
-      if (!isnan(this->sensible_heat_flux_vector[line][col]) && this->sensible_heat_flux_vector[line][col] > (this->net_radiation_vector[line][col] - this->soil_heat_vector[line][col]))
-      {
-        this->sensible_heat_flux_vector[line][col] = this->net_radiation_vector[line][col] - this->soil_heat_vector[line][col];
-      }
-    }
+    threads[j] = thread(sensible_heat_flux_final_TRD, start_line, end_line, a, b);
   }
+
+  for (int k = 0; k < threads_num; k++)
+    threads[k].join();
 };
 
 // void sensible_heat_function_default(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> &sensible_heat_flux_vector)
@@ -813,3 +751,91 @@ void Products::evapotranspiration_function(int width_band, int line)
   for (int col = 0; col < width_band; col++)
     this->evapotranspiration_vector[line][col] = this->net_radiation_24h_vector[line][col] * this->evapotranspiration_fraction_vector[line][col] * 0.035;
 };
+
+// ============ PARALLEL FUNCTIONS ============
+
+void Products::rah_initial_value_STEEP(Station station, int start_line, int end_line, double ndvi_min, double ndvi_max, double u10)
+{
+  for (int line = start_line; line < end_line; line++)
+  {
+    d0_fuction(line);
+    zom_fuction(station.A_ZOM, station.B_ZOM, line);
+    ustar_fuction(u10, line);
+    kb_function(ndvi_max, ndvi_min, line);
+    aerodynamic_resistance_fuction(line);
+  }
+}
+
+void Products::rah_correction_cycle_STEEP(int start_line, int end_line, Candidate hot_pixel, Candidate cold_pixel, double a, double b)
+{
+  using namespace std::chrono;
+  int64_t general_time, initial_time, final_time;
+  system_clock::time_point begin, end;
+
+  begin = system_clock::now();
+  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  for (int line = start_line; line < end_line; line++)
+  {
+    for (int col = 0; col < this->width_band; col++)
+    {
+      double DISP = this->d0_vector[line][col];
+      double dT_ini_terra = (a + b * (this->surface_temperature_vector[line][col] - 273.15));
+
+      // H_ini_terra
+      this->sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / this->aerodynamic_resistance_previous[line][col];
+
+      // L_MB_terra
+      double ustar_pow_3 = this->ustar_previous[line][col] * this->ustar_previous[line][col] * this->ustar_previous[line][col];
+
+      double L = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * this->surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * this->sensible_heat_flux_vector[line][col]));
+
+      double y2 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
+      double x200 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
+
+      double psi2, psi200;
+      if (!isnan(L) && L > 0)
+      {
+        psi2 = -5 * ((10 - DISP) / L);
+        psi200 = -5 * ((10 - DISP) / L);
+      }
+      else
+      {
+        psi2 = 2 * log((1 + y2 * y2) / 2);
+        psi200 = 2 * log((1 + x200) / 2) + log((1 + x200 * x200) / 2) - 2 * atan(x200) + 0.5 * M_PI;
+      }
+
+      // u*
+      double ust = (VON_KARMAN * this->ustar_previous[line][col]) / (log((10 - DISP) / this->zom_vector[line][col]) - psi200);
+
+      // rah
+      double zoh_terra = this->zom_vector[line][col] / pow(exp(1.0), (this->kb1_vector[line][col]));
+      double temp_rah1_corr_terra = (ust * VON_KARMAN);
+      double temp_rah2_corr_terra = log((10 - DISP) / this->zom_vector[line][col]) - psi2;
+      double temp_rah3_corr_terra = temp_rah1_corr_terra * log(this->zom_vector[line][col] / zoh_terra);
+      double rah = (temp_rah1_corr_terra * temp_rah2_corr_terra) + temp_rah3_corr_terra;
+
+      this->ustar_vector[line][col] = ust;
+      this->aerodynamic_resistance_vector[line][col] = rah;
+    }
+  }
+  end = system_clock::now();
+  general_time = duration_cast<milliseconds>(end - begin).count();
+  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  std::cout << "P2 - RAH - TEMPO DA THREAD: " << start_line << "x" << end_line << ", " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+};
+
+void Products::sensible_heat_flux_final(int start_line, int end_line, double a, double b)
+{
+  for (int line = start_line; line < end_line; line++)
+  {
+    for (int col = 0; col < width_band; col++)
+    {
+      this->sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (this->surface_temperature_vector[line][col] - 273.15)) / this->aerodynamic_resistance_vector[line][col];
+
+      if (!isnan(this->sensible_heat_flux_vector[line][col]) && this->sensible_heat_flux_vector[line][col] > (this->net_radiation_vector[line][col] - this->soil_heat_vector[line][col]))
+      {
+        this->sensible_heat_flux_vector[line][col] = this->net_radiation_vector[line][col] - this->soil_heat_vector[line][col];
+      }
+    }
+  }
+}
