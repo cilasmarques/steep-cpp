@@ -459,7 +459,7 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - SERIAL - TEMPO NDVI MIN e MAX, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  std::cout << "P2 - RAH - SERIAL - NDVI MIN & MAX, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   // ============== COMPUTE INITIAL RAH
 
@@ -479,10 +479,11 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
 
   for (int k = 0; k < threads_num; k++)
     threads[k].join();
+
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - SERIAL - TEMPO DO RAH INICIAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  std::cout << "P2 - RAH - SERIAL - RAH INITIAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   // ============== COMPUTE FINAL RAH
 
@@ -547,9 +548,12 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - TEMPO TOTAL DO RAH FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  std::cout << "P2 - RAH - PARALLEL - RAH FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   // ============== COMPUTE H
+
+  begin = system_clock::now();
+  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
   double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
   double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
@@ -571,6 +575,11 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
 
   for (int k = 0; k < threads_num; k++)
     threads[k].join();
+
+  end = system_clock::now();
+  general_time = duration_cast<milliseconds>(end - begin).count();
+  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  std::cout << "P2 - RAH - H FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 };
 
 // void sensible_heat_function_default(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num, vector<vector<double>> ndvi_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> &sensible_heat_flux_vector)
@@ -821,7 +830,7 @@ void Products::rah_correction_cycle_STEEP(int start_line, int end_line, Candidat
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - TEMPO DA THREAD: " << start_line << "x" << end_line << ", " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  std::cout << "P2 - RAH - THREAD: " << start_line << "x" << end_line << ", " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 };
 
 void Products::sensible_heat_flux_final(int start_line, int end_line, double a, double b)

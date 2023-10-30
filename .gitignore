@@ -2,6 +2,7 @@
 output/*
 input/*
 *.txt
+results/*
 
 # Prerequisites
 *.d

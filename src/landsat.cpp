@@ -36,12 +36,10 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   TIFFGetField(bands_resampled[1], TIFFTAG_IMAGEWIDTH, &width_band);
   TIFFGetField(bands_resampled[1], TIFFTAG_SAMPLEFORMAT, &sample_bands);
 
-
   // ===== PHASE 1 =====
 
-	phase1_begin = system_clock::now();
+  phase1_begin = system_clock::now();
   initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-
 
   // ==== INITIAL PRODUCTS
   Products products = Products(width_band, height_band);
@@ -80,23 +78,21 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
 
     _TIFFfree(tal_line_buff);
   }
-	phase1_end = system_clock::now();
+  phase1_end = system_clock::now();
   general_time = duration_cast<milliseconds>(phase1_end - phase1_begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   std::cout << "P1 - TOTAL," << general_time << "," << initial_time << "," << final_time << std::endl;
 
   TIFFClose(tal);
 
-
   // ===== PHASE 2 =====
 
-	phase2_begin = system_clock::now();
+  phase2_begin = system_clock::now();
   phase2_initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-
 
   // ==== PIXEL SELECTION
 
-	begin = system_clock::now();
+  begin = system_clock::now();
   initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   Candidate hot_pixel, cold_pixel;
   if (this->method == 0)
@@ -120,10 +116,9 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   std::cout << "P2 - PIXEL SELECTION," << general_time << "," << initial_time << "," << final_time << std::endl;
 
+  // ==== RAH CYCLE - COMPUTE H
 
-  // ==== RAH CYCLE - COMPUTE H 
-
-	begin = system_clock::now();
+  begin = system_clock::now();
   initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   if (this->method == 0)
   { // STEEP
@@ -138,8 +133,7 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   std::cout << "P2 - H," << general_time << "," << initial_time << "," << final_time << std::endl;
 
-
-  // ==== FINAL PRODUCTS 
+  // ==== FINAL PRODUCTS
 
   double dr = (1 / mtl.distance_earth_sun) * (1 / mtl.distance_earth_sun);
   double sigma = 0.409 * sin(((2 * PI / 365) * mtl.julian_day) - 1.39);
@@ -148,13 +142,13 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   double Ra24h = (((24 * 60 / PI) * GSC * dr) * (omegas * sin(phi) * sin(sigma) + cos(phi) * cos(sigma) * sin(omegas))) * (1000000 / 86400.0);
   double Rs24h = station.INTERNALIZATION_FACTOR * sqrt(station.v7_max - station.v7_min) * Ra24h;
 
-	begin = system_clock::now();
+  begin = system_clock::now();
   initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   for (int line = 0; line < height_band; line++)
   {
     products.latent_heat_flux_function(width_band, line);
     products.net_radiation_24h_function(Ra24h, Rs24h, width_band, line);
-    products.evapotranspiration_fraction_fuction( width_band, line);
+    products.evapotranspiration_fraction_fuction(width_band, line);
     products.sensible_heat_flux_24h_fuction(width_band, line);
     products.latent_heat_flux_24h_function(width_band, line);
     products.evapotranspiration_24h_function(station, width_band, line);
@@ -172,7 +166,7 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
 
   // =====  END + OUTPUTS =====
 
-  // std::ofstream outputProds("./output/products.txt"); 
+  // std::ofstream outputProds("./output/products.txt");
   // std::streambuf* coutProds = std::cout.rdbuf();
   // std::cout.rdbuf(outputProds.rdbuf());
 
