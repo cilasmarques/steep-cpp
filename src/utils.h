@@ -1,6 +1,7 @@
 #pragma once
 
 #include "constants.h"
+#include "cuda_utils.h"
 
 /**
  * @brief  Determines if a and b are approximately equals based on a epsilon.

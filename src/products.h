@@ -6,6 +6,7 @@
 #include "reader.h"
 #include "candidate.h"
 #include "parameters.h"
+#include "rah_cycle.cuh"
 
 /**
  * @brief  Struct to manage the products calculation.

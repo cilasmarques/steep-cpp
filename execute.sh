@@ -25,3 +25,5 @@ ps -aux | grep $PID
 sh scripts/collect-cpu-usage.sh $PID > $OUTPUT_DATA_PATH/cpu.csv &
 sh scripts/collect-memory-usage.sh $PID > $OUTPUT_DATA_PATH/mem.csv &
 sh scripts/collect-disk-usage.sh $PID > $OUTPUT_DATA_PATH/disk.csv &
+sh scripts/collect-gpu-usage.sh $PID > $OUTPUT_DATA_PATH/gpu.csv &
+sh scripts/collect-gpu-memory-usage.sh $PID > $OUTPUT_DATA_PATH/mem-gpu.csv &

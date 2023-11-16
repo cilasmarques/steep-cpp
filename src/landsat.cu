@@ -166,6 +166,27 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
 
   // =====  END + OUTPUTS =====
 
+  string outPath = "./output/extra.txt";
+  std::ofstream outputThreads(outPath);
+  std::streambuf* coutThreads = std::cout.rdbuf();
+  std::cout.rdbuf(outputThreads.rdbuf());
+  std::cout << "threads_num: " << threads_num << std::endl;
+  std::cout << "width: " << width_band << std::endl;
+  std::cout << "height: " << height_band << std::endl;
+
+  int deviceCount;
+  cudaGetDeviceCount(&deviceCount);
+  for (int device = 0; device < deviceCount; ++device) {
+      cudaDeviceProp deviceProp;
+      cudaGetDeviceProperties(&deviceProp, device);
+
+      std::cout << "Device " << device << ": " << deviceProp.name << std::endl;
+      std::cout << "Max Grid Dimensions: " << deviceProp.maxGridSize[0] << " x " << deviceProp.maxGridSize[1] << " x " << deviceProp.maxGridSize[2] << std::endl;
+      std::cout << "Max Block Dimensions: " << deviceProp.maxThreadsDim[0] << " x " << deviceProp.maxThreadsDim[1] << " x " << deviceProp.maxThreadsDim[2] << std::endl;
+      std::cout << "Max Threads per Block: " << deviceProp.maxThreadsPerBlock << std::endl;
+      std::cout << "------------------------" << std::endl;
+  }
+
   // std::ofstream outputProds("./output/products.txt");
   // std::streambuf* coutProds = std::cout.rdbuf();
   // std::cout.rdbuf(outputProds.rdbuf());

@@ -434,8 +434,19 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   int64_t general_time, initial_time, final_time;
   system_clock::time_point begin, end;
 
+  int64_t general_time_tmp, initial_time_tmp, final_time_tmp;
+  system_clock::time_point begin_tmp, end_tmp;
+
   thread threads[threads_num];
-  int lines_per_thread = height_band / threads_num;
+  int lines_per_thread = ceil(height_band / threads_num);
+
+  int blockSize_heigth = 1;
+  int blockSize_width = 35;
+  dim3 blockSize(blockSize_width, blockSize_heigth); // W x H < 1024
+
+  int gridSize_heigth = height_band / blockSize.y;
+  int gridSize_width = width_band / blockSize.x;
+  dim3 gridSize(gridSize_width, gridSize_heigth);
 
   // ============== COMPUTE NDVI MIN MAX
 
@@ -504,51 +515,105 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   double rah_ini_pq_terra;
   double rah_ini_pf_terra;
 
+  double *devZom, *devTS;
+  double *devUstarR, *devUstarW;
+  double *devRahR, *devRahW;
+  double *devA, *devB, *devU10;
+  double *devD0, *devKB1;
+  int *devSize;
+
+  HANDLE_ERROR(cudaMalloc((void **)&devA, sizeof(double)));
+  HANDLE_ERROR(cudaMalloc((void **)&devB, sizeof(double)));
+  HANDLE_ERROR(cudaMalloc((void **)&devU10, sizeof(double)));
+  HANDLE_ERROR(cudaMalloc((void **)&devSize, sizeof(int)));
+  HANDLE_ERROR(cudaMalloc((void **)&devZom, width_band * sizeof(double)));
+  HANDLE_ERROR(cudaMalloc((void **)&devD0, width_band * sizeof(double)));
+  HANDLE_ERROR(cudaMalloc((void **)&devKB1, width_band * sizeof(double)));
+  HANDLE_ERROR(cudaMalloc((void **)&devTS, width_band * sizeof(double)));
+  HANDLE_ERROR(cudaMalloc((void **)&devUstarR, width_band * sizeof(double)));
+  HANDLE_ERROR(cudaMalloc((void **)&devUstarW, width_band * sizeof(double)));
+  HANDLE_ERROR(cudaMalloc((void **)&devRahR, width_band * sizeof(double)));
+  HANDLE_ERROR(cudaMalloc((void **)&devRahW, width_band * sizeof(double)));
+
+  HANDLE_ERROR(cudaMemcpy(devSize, &width_band, sizeof(int), cudaMemcpyHostToDevice));
+
   for (int i = 0; i < 2; i++)
   {
-    ustar_previous = ustar_vector;
-    aerodynamic_resistance_previous = aerodynamic_resistance_vector;
-
-    rah_ini_pq_terra = hot_pixel.aerodynamic_resistance[i];
-    rah_ini_pf_terra = cold_pixel.aerodynamic_resistance[i];
-
-    double LEc_terra = 0.55 * fc_hot * (hot_pixel.net_radiation - hot_pixel.soil_heat_flux) * 0.78;
-    double LEc_terra_pf = 1.75 * fc_cold * (cold_pixel.net_radiation - cold_pixel.soil_heat_flux) * 0.78;
-
-    H_pf_terra = cold_pixel.net_radiation - cold_pixel.soil_heat_flux - LEc_terra_pf;
-    double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
-
-    H_pq_terra = hot_pixel.net_radiation - hot_pixel.soil_heat_flux - LEc_terra;
-    double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
-
-    double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
-    double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
-
-    for (int j = 0; j < threads_num; j++)
+    for (int line = 0; line < height_band; line++)
     {
-      int start_line = j * lines_per_thread;
-      int end_line = (j == threads_num - 1) ? height_band : (j + 1) * lines_per_thread;
-      auto rah_correction_cycle_STEEP_TRD = [&](int start_line, int end_line, Candidate hot_pixel, Candidate cold_pixel, double a, double b)
+            double *surface_temperature_line = surface_temperature_vector[line].data();
+      double *zom_line = zom_vector[line].data();
+      double *d0_line = d0_vector[line].data();
+      double *kb1_line = kb1_vector[line].data();
+      double *ustar_previous_line = ustar_previous[line].data();
+      double *aerodynamic_resistance_previous_line = aerodynamic_resistance_vector[line].data();
+      
+      ustar_previous = ustar_vector;
+      aerodynamic_resistance_previous = aerodynamic_resistance_vector;
+
+      rah_ini_pq_terra = hot_pixel.aerodynamic_resistance[i];
+      rah_ini_pf_terra = cold_pixel.aerodynamic_resistance[i];
+
+      double LEc_terra = 0.55 * fc_hot * (hot_pixel.net_radiation - hot_pixel.soil_heat_flux) * 0.78;
+      double LEc_terra_pf = 1.75 * fc_cold * (cold_pixel.net_radiation - cold_pixel.soil_heat_flux) * 0.78;
+
+      H_pf_terra = cold_pixel.net_radiation - cold_pixel.soil_heat_flux - LEc_terra_pf;
+      double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
+
+      H_pq_terra = hot_pixel.net_radiation - hot_pixel.soil_heat_flux - LEc_terra;
+      double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
+
+      double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
+      double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
+
+      HANDLE_ERROR(cudaMemcpy(devA, &a, sizeof(double), cudaMemcpyHostToDevice));
+      HANDLE_ERROR(cudaMemcpy(devB, &b, sizeof(double), cudaMemcpyHostToDevice));
+
+      HANDLE_ERROR(cudaMemcpy(devTS, surface_temperature_line, width_band * sizeof(double), cudaMemcpyHostToDevice));
+      HANDLE_ERROR(cudaMemcpy(devZom, zom_line, width_band * sizeof(double), cudaMemcpyHostToDevice));
+      HANDLE_ERROR(cudaMemcpy(devD0, d0_line, width_band * sizeof(double), cudaMemcpyHostToDevice));
+      HANDLE_ERROR(cudaMemcpy(devKB1, kb1_line, width_band * sizeof(double), cudaMemcpyHostToDevice));
+      HANDLE_ERROR(cudaMemcpy(devUstarR, ustar_previous_line, width_band * sizeof(double), cudaMemcpyHostToDevice));
+      HANDLE_ERROR(cudaMemcpy(devRahR, aerodynamic_resistance_previous_line, width_band * sizeof(double), cudaMemcpyHostToDevice));
+
+      begin_tmp = system_clock::now();
+      initial_time_tmp = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+      correctionCycleSTEEP<<<((width_band + threads_num - 1) / threads_num), threads_num>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devA, devB, devU10, devSize);
+      cudaDeviceSynchronize();
+      end_tmp = system_clock::now();
+      general_time_tmp = duration_cast<milliseconds>(end_tmp - begin_tmp).count();
+      final_time_tmp = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+      std::cout << "P2 - RAH - PARALLEL - BEFORE GPU, " << general_time_tmp << ", " << initial_time_tmp << ", " << final_time_tmp << std::endl;
+
+      HANDLE_ERROR(cudaMemcpy(ustar_vector[line].data(), devUstarW, width_band * sizeof(double), cudaMemcpyDeviceToHost));
+      HANDLE_ERROR(cudaMemcpy(aerodynamic_resistance_vector[line].data(), devRahW, width_band * sizeof(double), cudaMemcpyDeviceToHost));
+
+      if (line == hot_pixel.line)
       {
-        this->rah_correction_cycle_STEEP(start_line, end_line, hot_pixel, cold_pixel, a, b);
-      };
+        hot_pixel.aerodynamic_resistance.push_back(aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col]);
+      }
 
-      threads[j] = thread(rah_correction_cycle_STEEP_TRD, start_line, end_line, hot_pixel, cold_pixel, a, b);
+      if (line == cold_pixel.line)
+      {
+        cold_pixel.aerodynamic_resistance.push_back(aerodynamic_resistance_vector[cold_pixel.line][cold_pixel.col]);
+      }
     }
-
-    for (int k = 0; k < threads_num; k++)
-      threads[k].join();
-
-    double rah_hot = this->aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col];
-    hot_pixel.aerodynamic_resistance.push_back(rah_hot);
-
-    double rah_cold = this->aerodynamic_resistance_vector[cold_pixel.line][cold_pixel.col];
-    cold_pixel.aerodynamic_resistance.push_back(rah_cold);
   }
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   std::cout << "P2 - RAH - PARALLEL - RAH FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+
+  HANDLE_ERROR(cudaFree(devA));
+  HANDLE_ERROR(cudaFree(devB));
+  HANDLE_ERROR(cudaFree(devZom));
+  HANDLE_ERROR(cudaFree(devD0));
+  HANDLE_ERROR(cudaFree(devKB1));
+  HANDLE_ERROR(cudaFree(devTS));
+  HANDLE_ERROR(cudaFree(devUstarR));
+  HANDLE_ERROR(cudaFree(devUstarW));
+  HANDLE_ERROR(cudaFree(devRahR));
+  HANDLE_ERROR(cudaFree(devRahW));
 
   // ============== COMPUTE H
 
