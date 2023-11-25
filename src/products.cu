@@ -445,11 +445,8 @@ void Products::aerodynamic_resistance_fuction(vector<double> ustar_line, int wid
 void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num)
 {
   using namespace std::chrono;
-  int64_t general_time, initial_time, final_time;
-  system_clock::time_point begin, end;
-
-  int64_t general_time_tmp, initial_time_tmp, final_time_tmp;
-  system_clock::time_point begin_tmp, end_tmp;
+  system_clock::time_point begin, end, begin_core, end_core;
+  int64_t general_time, initial_time, final_time, general_time_core, initial_time_core, final_time_core;
 
   thread threads[threads_num];
   int lines_per_thread = ceil(height_band / threads_num);
@@ -568,17 +565,19 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
     HANDLE_ERROR(cudaMemcpy(devRahR, aerodynamic_resistance_pointer, nBytes_band, cudaMemcpyHostToDevice));
     HANDLE_ERROR(cudaMemcpy(devH, sensible_heat_flux_pointer, nBytes_band, cudaMemcpyHostToDevice));
 
-    begin_tmp = system_clock::now();
-    initial_time_tmp = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    // ==== Paralelization core
+    begin_core = system_clock::now();
+    initial_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
     correctionCycleSTEEP<<<gridSize, blockSize>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 
-    end_tmp = system_clock::now();
-    general_time_tmp = duration_cast<milliseconds>(end_tmp - begin_tmp).count();
-    final_time_tmp = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-    std::cout << "P2 - RAH - PARALLEL - BEFORE GPU, " << general_time_tmp << ", " << initial_time_tmp << ", " << final_time_tmp << std::endl;
+    end_core = system_clock::now();
+    general_time_core = duration_cast<milliseconds>(end_core - begin_core).count();
+    final_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    std::cout << "P2 - RAH - PARALLEL - CORE, " << general_time_core << ", " << initial_time_core << ", " << final_time_core << std::endl;
+    // ==== 
 
     HANDLE_ERROR(cudaMemcpy(ustar_pointer, devUstarW, nBytes_band, cudaMemcpyDeviceToHost));
     HANDLE_ERROR(cudaMemcpy(aerodynamic_resistance_pointer, devRahW, nBytes_band, cudaMemcpyDeviceToHost));
