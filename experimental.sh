@@ -12,15 +12,26 @@ THREADS=$7
 
 rm -rf $FINAL_PATH/*
 
-for i in $(seq -f "%02g" 1 30)
-do
-	echo Executing ${i}th experiment
-	mkdir $FINAL_PATH/experimento${i}
-	time sh ./execute.sh $SENSOR $INPUT_PATH $OUTPUT_PATH $METHOD $LANDCOVER_DATA_FILE $THREADS
-	
-	sleep 105
-	mv $OUTPUT_PATH/*.csv $FINAL_PATH/experimento${i}
-	mv $OUTPUT_PATH/*.txt $FINAL_PATH/experimento${i}
-	rm -rf $OUTPUT_PATH/*
-	echo Completing ${i}th experiment
+for i in $(seq -f "%02g" 1 3); do
+  echo "Executing ${i}th experiment"
+
+  # Start the ./src/main process
+  sh ./execute.sh $SENSOR $INPUT_PATH $OUTPUT_PATH $METHOD $LANDCOVER_DATA_FILE $THREADS
+
+  # Capture the PID of the last background process
+  PID=$(pidof -s main)
+  echo "PID: $PID"
+
+  # Wait for the background process to finish
+  while kill -0 $PID 2>/dev/null; do
+    sleep 1
+  done
+
+  # Put the data in the final folder
+  mkdir -p $FINAL_PATH/experiment${i}
+  mv $OUTPUT_PATH/*.csv $FINAL_PATH/experiment${i}
+  mv $OUTPUT_PATH/*.txt $FINAL_PATH/experiment${i}
+  rm -rf $OUTPUT_PATH/*
+
+  echo "Completing ${i}th experiment"
 done
