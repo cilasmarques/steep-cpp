@@ -166,64 +166,64 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
 
   // =====  END + OUTPUTS =====
 
-  string outPath = "./output/extra.txt";
-  std::ofstream outputThreads(outPath);
-  std::streambuf* coutThreads = std::cout.rdbuf();
-  std::cout.rdbuf(outputThreads.rdbuf());
-  std::cout << "threads_num: " << threads_num << std::endl;
-  std::cout << "width: " << width_band << std::endl;
-  std::cout << "height: " << height_band << std::endl;
+  // string outPath = "./output/extra.txt";
+  // std::ofstream outputThreads(outPath);
+  // std::streambuf* coutThreads = std::cout.rdbuf();
+  // std::cout.rdbuf(outputThreads.rdbuf());
+  // std::cout << "threads_num: " << threads_num << std::endl;
+  // std::cout << "width: " << width_band << std::endl;
+  // std::cout << "height: " << height_band << std::endl;
 
-  int deviceCount;
-  cudaGetDeviceCount(&deviceCount);
-  for (int device = 0; device < deviceCount; ++device) {
-      cudaDeviceProp deviceProp;
-      cudaGetDeviceProperties(&deviceProp, device);
+  // int deviceCount;
+  // cudaGetDeviceCount(&deviceCount);
+  // for (int device = 0; device < deviceCount; ++device) {
+  //     cudaDeviceProp deviceProp;
+  //     cudaGetDeviceProperties(&deviceProp, device);
 
-      std::cout << "Device " << device << ": " << deviceProp.name << std::endl;
-      std::cout << "Max Grid Dimensions: " << deviceProp.maxGridSize[0] << " x " << deviceProp.maxGridSize[1] << " x " << deviceProp.maxGridSize[2] << std::endl;
-      std::cout << "Max Block Dimensions: " << deviceProp.maxThreadsDim[0] << " x " << deviceProp.maxThreadsDim[1] << " x " << deviceProp.maxThreadsDim[2] << std::endl;
-      std::cout << "Max Threads per Block: " << deviceProp.maxThreadsPerBlock << std::endl;
-      std::cout << "------------------------" << std::endl;
-  }
+  //     std::cout << "Device " << device << ": " << deviceProp.name << std::endl;
+  //     std::cout << "Max Grid Dimensions: " << deviceProp.maxGridSize[0] << " x " << deviceProp.maxGridSize[1] << " x " << deviceProp.maxGridSize[2] << std::endl;
+  //     std::cout << "Max Block Dimensions: " << deviceProp.maxThreadsDim[0] << " x " << deviceProp.maxThreadsDim[1] << " x " << deviceProp.maxThreadsDim[2] << std::endl;
+  //     std::cout << "Max Threads per Block: " << deviceProp.maxThreadsPerBlock << std::endl;
+  //     std::cout << "------------------------" << std::endl;
+  // }
 
-  std::ofstream outputProds("./output/products.txt");
-  std::streambuf* coutProds = std::cout.rdbuf();
-  std::cout.rdbuf(outputProds.rdbuf());
+  // std::ofstream outputProds("./output/products.txt");
+  // std::streambuf* coutProds = std::cout.rdbuf();
+  // std::cout.rdbuf(outputProds.rdbuf());
 
-  std::cout << " ==== albedo" << std::endl;
-  printVector2x2(products.albedo_vector);
+  // std::cout << " ==== albedo" << std::endl;
+  // printVector2x2(products.albedo_vector);
 
-  std::cout << " ==== ndvi" << std::endl;
-  printVector2x2(products.ndvi_vector);
+  // std::cout << " ==== ndvi" << std::endl;
+  // printVector2x2(products.ndvi_vector);
 
-  std::cout << " ==== net_radiation" << std::endl;
-  printVector2x2(products.net_radiation_vector);
+  // std::cout << " ==== net_radiation" << std::endl;
+  // printVector2x2(products.net_radiation_vector);
 
-  std::cout << " ==== soil_heat" << std::endl;
-  printVector2x2(products.soil_heat_vector);
+  // std::cout << " ==== soil_heat" << std::endl;
+  // printVector2x2(products.soil_heat_vector);
 
-  std::cout << " ==== sensible_heat_flux" << std::endl;
-  printVector2x2(products.sensible_heat_flux_vector);
+  // std::cout << " ==== sensible_heat_flux" << std::endl;
+  // printVector2x2(products.sensible_heat_flux_vector);
 
-  std::cout << " ==== latent_heat_flux" << std::endl;
-  printVector2x2(products.latent_heat_flux_vector);
+  // std::cout << " ==== latent_heat_flux" << std::endl;
+  // printVector2x2(products.latent_heat_flux_vector);
 
-  std::cout << " ==== net_radiation_24h" << std::endl;
-  printVector2x2(products.net_radiation_24h_vector);
+  // std::cout << " ==== net_radiation_24h" << std::endl;
+  // printVector2x2(products.net_radiation_24h_vector);
 
-  std::cout << " ==== evapotranspiration_fraction" << std::endl;
-  printVector2x2(products.evapotranspiration_fraction_vector);
+  // std::cout << " ==== evapotranspiration_fraction" << std::endl;
+  // printVector2x2(products.evapotranspiration_fraction_vector);
 
-  std::cout << " ==== sensible_heat_flux_24h" << std::endl;
-  printVector2x2(products.sensible_heat_flux_24h_vector);
+  // std::cout << " ==== sensible_heat_flux_24h" << std::endl;
+  // printVector2x2(products.sensible_heat_flux_24h_vector);
 
-  std::cout << " ==== latent_heat_flux_24h" << std::endl;
-  printVector2x2(products.latent_heat_flux_24h_vector);
+  // std::cout << " ==== latent_heat_flux_24h" << std::endl;
+  // printVector2x2(products.latent_heat_flux_24h_vector);
 
-  std::cout << " ==== evapotranspiration_24h" << std::endl;
-  printVector2x2(products.evapotranspiration_24h_vector);
+  // std::cout << " ==== evapotranspiration_24h" << std::endl;
+  // printVector2x2(products.evapotranspiration_24h_vector);
 
-  std::cout << " ==== evapotranspiration" << std::endl;
-  printVector2x2(products.evapotranspiration_vector);
+  // std::cout << " ==== evapotranspiration" << std::endl;
+  // printVector2x2(products.evapotranspiration_vector);
 };
