@@ -15,6 +15,7 @@ struct Products
 {
   uint32 width_band;
   uint32 height_band;
+  int nBytes_band;
 
   vector<vector<vector<double>>> radiance_vector;
   vector<vector<vector<double>>> reflectance_vector;
@@ -32,14 +33,16 @@ struct Products
   vector<vector<double>> short_wave_radiation_vector;
   vector<vector<double>> large_wave_radiation_surface_vector;
   vector<vector<double>> large_wave_radiation_atmosphere_vector;
-  vector<vector<double>> d0_vector;
-  vector<vector<double>> zom_vector;
-  vector<vector<double>> ustar_vector;
-  vector<vector<double>> kb1_vector;
-  vector<vector<double>> aerodynamic_resistance_vector;
+
+  double *surface_temperature_pointer;
+  double *d0_pointer;
+  double *zom_pointer;
+  double *ustar_pointer;
+  double *kb1_pointer;
+  double *aerodynamic_resistance_pointer;
+  double *sensible_heat_flux_pointer;
+
   vector<vector<double>> sensible_heat_flux_vector;
-  vector<vector<double>> ustar_previous;
-  vector<vector<double>> aerodynamic_resistance_previous;
   vector<vector<double>> latent_heat_flux_vector;
   vector<vector<double>> net_radiation_24h_vector;
   vector<vector<double>> evapotranspiration_fraction_vector;
