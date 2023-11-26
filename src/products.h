@@ -79,8 +79,8 @@ struct Products
   void aerodynamic_resistance_fuction(vector<double> ustar_line, int width_band, vector<double> &aerodynamic_resistance_line);
   void aerodynamic_resistance_fuction(int line);
 
-  void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num);
-  void sensible_heat_function_default(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num);
+  void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num, int blocks_num);
+  void sensible_heat_function_default(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num, int blocks_num);
 
   void latent_heat_flux_function(int width_band, int line);
   void net_radiation_24h_function(double Ra24h, double Rs24h, int width_band, int line);

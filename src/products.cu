@@ -442,7 +442,7 @@ void Products::aerodynamic_resistance_fuction(vector<double> ustar_line, int wid
     aerodynamic_resistance_line[col] = log(20) / (ustar_line[col] * VON_KARMAN);
 };
 
-void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num)
+void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num, int blocks_num)
 {
   using namespace std::chrono;
   system_clock::time_point begin, end, begin_core, end_core;
@@ -457,10 +457,10 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   HANDLE_ERROR(cudaGetDeviceProperties(&deviceProp, dev));
   HANDLE_ERROR(cudaSetDevice(dev));
 
-  int dimx = 32;
-  int dimy = 32;
+  int dimy = 1;
+  int dimx = 1024;
   dim3 blockSize(dimx, dimy);
-  dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, (height_band + blockSize.y - 1) / blockSize.y);
+  dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, blocks_num);
 
   // ============== COMPUTE NDVI MIN MAX
 

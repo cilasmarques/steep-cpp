@@ -68,6 +68,14 @@ int main(int argc, char *argv[])
       threads_num = atof(threads_flag.substr(9, threads_flag.size()).c_str());
   }
 
+  // load blocks number
+  int blocks_num = 6504;
+  if(argc >= 17){
+    string blocks_flag = argv[16];
+    if(blocks_flag.substr(0,8) == "-blocks=")
+      blocks_num = atof(blocks_flag.substr(8, blocks_flag.size()).c_str());
+  }
+
   //Timing
   using namespace std::chrono;
   system_clock::time_point begin, end;
@@ -77,7 +85,7 @@ int main(int argc, char *argv[])
   initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   begin = system_clock::now();
 
-  Landsat landsat = Landsat(method, bands_paths, tal_path, land_cover_path, threads_num); 
+  Landsat landsat = Landsat(method, bands_paths, tal_path, land_cover_path, threads_num, blocks_num);
   landsat.process_products(mtl, sensor, station);
 
   end = system_clock::now();

@@ -1,6 +1,6 @@
 #include "landsat.h"
 
-Landsat::Landsat(int method, string bands_paths[], string tal_path, string land_cover_path, int threads_num)
+Landsat::Landsat(int method, string bands_paths[], string tal_path, string land_cover_path, int threads_num, int blocks_num)
 {
   for (int i = 0; i < 8; i++)
     this->bands_paths[i] = bands_paths[i];
@@ -9,6 +9,7 @@ Landsat::Landsat(int method, string bands_paths[], string tal_path, string land_
   this->land_cover_path = land_cover_path;
   this->method = method;
   this->threads_num = threads_num;
+  this->blocks_num = blocks_num;
 };
 
 void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
@@ -122,11 +123,11 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   if (this->method == 0)
   { // STEEP
-    products.sensible_heat_function_STEEP(hot_pixel, cold_pixel, station, height_band, width_band, this->threads_num);
+    products.sensible_heat_function_STEEP(hot_pixel, cold_pixel, station, height_band, width_band, this->threads_num, this->blocks_num);
   }
   // else
   // { // ASEBAL & ESASEB
-  //   sensible_heat_function_default(hot_pixel, cold_pixel, station, height_band, width_band, this->threads_num);
+  //   sensible_heat_function_default(hot_pixel, cold_pixel, station, height_band, width_band, this->threads_num, this->blocks_num);
   // }
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
