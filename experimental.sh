@@ -12,11 +12,12 @@ THREADS=$7
 
 rm -rf $FINAL_PATH/*
 
-for i in $(seq -f "%02g" 1 3); do
+for i in $(seq -f "%02g" 1 30); do
   echo "Executing ${i}th experiment"
 
   # Start the ./src/main process
   sh ./execute.sh $SENSOR $INPUT_PATH $OUTPUT_PATH $METHOD $LANDCOVER_DATA_FILE $THREADS
+  sleep 5
 
   # Capture the PID of the last background process
   PID=$(pidof -s main)

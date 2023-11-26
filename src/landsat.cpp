@@ -166,6 +166,14 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
 
   // =====  END + OUTPUTS =====
 
+  string outPath = "./output/extra.txt";
+  std::ofstream outputThreads(outPath);
+  std::streambuf* coutThreads = std::cout.rdbuf();
+  std::cout.rdbuf(outputThreads.rdbuf());
+  std::cout << "threads_num: " << threads_num << std::endl;
+  std::cout << "width: " << width_band << std::endl;
+  std::cout << "height: " << height_band << std::endl;
+
   // std::ofstream outputProds("./output/products.txt");
   // std::streambuf* coutProds = std::cout.rdbuf();
   // std::cout.rdbuf(outputProds.rdbuf());
