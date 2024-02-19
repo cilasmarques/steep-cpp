@@ -97,19 +97,8 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   Candidate hot_pixel, cold_pixel;
   if (this->method == 0)
   { // STEEP
-    hot_pixel = getHotPixelSTEPP(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
-    cold_pixel = getColdPixelSTEPP(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
-  }
-  else if (this->method == 1)
-  { // ASEBAL
-    hot_pixel = getHotPixelASEBAL(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
-    cold_pixel = getColdPixelASEBAL(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
-  }
-  else if (this->method == 2)
-  { // ESA SEBAL
-    TIFF *land_cover_tiff = TIFFOpen(this->land_cover_path.c_str(), "r");
-    pair<Candidate, Candidate> pixels = getColdHotPixelsESA(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, land_cover_tiff, height_band, width_band);
-    hot_pixel = pixels.first, cold_pixel = pixels.second;
+    pair<Candidate, Candidate> pixels = getColdHotPixelsSTEPP(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
+    hot_pixel = pixels.first, cold_pixel = pixels.second;    
   }
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
@@ -124,10 +113,6 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   { // STEEP
     products.sensible_heat_function_STEEP(hot_pixel, cold_pixel, station, height_band, width_band, this->threads_num);
   }
-  // else
-  // { // ASEBAL & ESASEB
-  //   sensible_heat_function_default(hot_pixel, cold_pixel, station, height_band, width_band, this->threads_num);
-  // }
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
