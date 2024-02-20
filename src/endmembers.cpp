@@ -6,55 +6,70 @@ void compute_H0(vector<double> net_radiation_line, vector<double> soil_heat_flux
     ho_line[col] = net_radiation_line[col] - soil_heat_flux[col];
 };
 
-void filter_valid_values(vector<double> target_line, double *target_values, int width_band, int *pos)
+void calculate_quartiles(double *values, int size, double *quartiles, const vector<double> &percentiles)
 {
-  for (int col = 0; col < width_band; col++)
+  for (size_t i = 0; i < percentiles.size(); ++i)
   {
-    if (!isnan(target_line[col]) && !isinf(target_line[col]))
-    {
-      target_values[*pos] = target_line[col];
-      (*pos)++;
-    }
+    int nth = int(percentiles[i] * size);
+    nth_element(values, values + nth, values + size);
+    quartiles[i] = values[nth];
   }
 }
 
-void get_quartiles(vector<vector<double>> target_vector, double *v_quartile, int height_band, int width_band, double first_interval, double mid_interval, double last_interval)
+void get_quartiles(vector<vector<double>> ndvi_vector, vector<vector<double>> albedo_vector, vector<vector<double>> surface_temperature_vector, int height_band, int width_band, double *ndvi_quartile, double *albedo_quartile, double *ts_quartile)
 {
   const int SIZE = height_band * width_band;
-  double *target_values = (double *)malloc(sizeof(double) * SIZE);
 
-  if (target_values == NULL)
-    exit(15);
+  double *ndvi_values = new double[SIZE];
+  double *albedo_values = new double[SIZE];
+  double *ts_values = new double[SIZE];
 
-  int pos = 0;
-  for (int line = 0; line < height_band; line++)
+  int ndvi_count = 0, albedo_count = 0, ts_count = 0;
+
+  for (int i = 0; i < height_band; ++i)
   {
-    filter_valid_values(target_vector[line], target_values, width_band, &pos);
+    for (int j = 0; j < width_band; ++j)
+    {
+      if (!isnan(ndvi_vector[i][j]) && !isinf(ndvi_vector[i][j]))
+      {
+        ndvi_values[ndvi_count++] = ndvi_vector[i][j];
+      }
+      if (!isnan(albedo_vector[i][j]) && !isinf(albedo_vector[i][j]))
+      {
+        albedo_values[albedo_count++] = albedo_vector[i][j];
+      }
+      if (!isnan(surface_temperature_vector[i][j]) && !isinf(surface_temperature_vector[i][j]))
+      {
+        ts_values[ts_count++] = surface_temperature_vector[i][j];
+      }
+    }
   }
 
-  sort(target_values, target_values + pos);
+  // Definindo os percentis para calcular os quartis desejados
+  vector<double> ndvi_percentiles = {0.15, 0.85, 0.97};
+  vector<double> albedo_percentiles = {0.25, 0.50, 0.75};
+  vector<double> ts_percentiles = {0.20, 0.85, 0.97};
 
-  v_quartile[0] = target_values[int(floor(first_interval * pos))];
-  v_quartile[1] = target_values[int(floor(mid_interval * pos))];
-  v_quartile[2] = target_values[int(floor(last_interval * pos))];
+  calculate_quartiles(ndvi_values, ndvi_count, ndvi_quartile, ndvi_percentiles);
+  calculate_quartiles(albedo_values, albedo_count, albedo_quartile, albedo_percentiles);
+  calculate_quartiles(ts_values, ts_count, ts_quartile, ts_percentiles);
 
-  free(target_values);
+  delete[] ndvi_values;
+  delete[] albedo_values;
+  delete[] ts_values;
 }
 
 pair<Candidate, Candidate> getColdHotPixelsSTEPP(vector<vector<double>> ndvi_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> albedo_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, int height_band, int width_band)
 {
   vector<Candidate> hotCandidatesGroup;
   vector<Candidate> coldCandidatesGroup;
+  vector<vector<double>> ho_vector(height_band, vector<double>(width_band));
 
   vector<double> hotNDVIQuartile(3);
   vector<double> hotTSQuartile(3);
   vector<double> hotAlbedoQuartile(3);
 
-  vector<vector<double>> ho_vector(height_band, vector<double>(width_band));
-
-  get_quartiles(ndvi_vector, hotNDVIQuartile.data(), height_band, width_band, 0.15, 0.85, 0.97);
-  get_quartiles(albedo_vector, hotAlbedoQuartile.data(), height_band, width_band, 0.25, 0.50, 0.75);
-  get_quartiles(surface_temperature_vector, hotTSQuartile.data(), height_band, width_band, 0.20, 0.85, 0.97);
+  get_quartiles(ndvi_vector, albedo_vector, surface_temperature_vector, height_band, width_band, hotNDVIQuartile.data(), hotAlbedoQuartile.data(), hotTSQuartile.data());
 
   for (int line = 0; line < height_band; line++)
   {

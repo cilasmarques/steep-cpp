@@ -459,7 +459,7 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - SERIAL - NDVI MIN & MAX, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  // std::cout << "P2 - RAH - SERIAL - NDVI MIN & MAX, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   // ============== COMPUTE INITIAL RAH
 
@@ -483,7 +483,7 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - SERIAL - RAH INITIAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  // std::cout << "P2 - RAH - SERIAL - RAH INITIAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   // ============== COMPUTE FINAL RAH
 
@@ -546,7 +546,7 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
     end_core = system_clock::now();
     general_time_core = duration_cast<milliseconds>(end_core - begin_core).count();
     final_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-    std::cout << "P2 - RAH - PARALLEL - CORE, " << general_time_core << ", " << initial_time_core << ", " << final_time_core << std::endl;
+    // std::cout << "P2 - RAH - PARALLEL - CORE, " << general_time_core << ", " << initial_time_core << ", " << final_time_core << std::endl;
     // ==== 
 
     double rah_hot = this->aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col];
@@ -558,7 +558,7 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - PARALLEL - RAH FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  // std::cout << "P2 - RAH - PARALLEL - RAH FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   // ============== COMPUTE H
 
@@ -589,7 +589,7 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - H FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  // std::cout << "P2 - RAH - H FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 };
 
 void Products::latent_heat_flux_function(int width_band, int line)
