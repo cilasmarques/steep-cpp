@@ -72,17 +72,17 @@ int main(int argc, char *argv[])
   using namespace std::chrono;
   system_clock::time_point begin, end;
   int64_t initial_time, final_time, general_time;
-  std::cout << "PHASE,TIMESTAMP,START_TIME,END_TIME" << std::endl;
+  std::cout << "PHASE,TIME,START_TIME,END_TIME" << std::endl;
 
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  initial_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
   begin = system_clock::now();
 
   Landsat landsat = Landsat(method, bands_paths, tal_path, land_cover_path, threads_num); 
   landsat.process_products(mtl, sensor, station);
 
   end = system_clock::now();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  general_time = duration_cast<milliseconds>(end.time_since_epoch() - begin.time_since_epoch()).count();
+  final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+  general_time = duration_cast<nanoseconds>(end.time_since_epoch() - begin.time_since_epoch()).count();
 
   std::cout << "TOTAL," << general_time << "," << initial_time << "," << final_time << std::endl;
 

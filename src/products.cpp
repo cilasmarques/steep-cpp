@@ -431,8 +431,8 @@ void Products::aerodynamic_resistance_fuction(vector<double> ustar_line, int wid
 void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num)
 {
   using namespace std::chrono;
-  system_clock::time_point begin, end, begin_core, end_core;
-  int64_t general_time, initial_time, final_time, general_time_core, initial_time_core, final_time_core;
+  system_clock::time_point begin, end, begin_core, end_core, begin_rah_c, end_rah_c;
+  int64_t general_time, initial_time, final_time, general_time_core, initial_time_core, final_time_core, initial_time_rah_c, final_time_rah_c;  
 
   thread threads[threads_num];
   int lines_per_thread = height_band / threads_num;
@@ -440,7 +440,7 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   // ============== COMPUTE NDVI MIN MAX
 
   begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  initial_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
   double ustar_station = (VON_KARMAN * station.v6) / (log(station.WIND_SPEED / station.SURFACE_ROUGHNESS));
   double u10 = (ustar_station / VON_KARMAN) * log(10 / station.SURFACE_ROUGHNESS);
   double ndvi_min = 1.0;
@@ -457,14 +457,14 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
     }
   }
   end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  // std::cout << "P2 - RAH - SERIAL - NDVI MIN & MAX, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  general_time = duration_cast<nanoseconds>(end - begin).count();
+  final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+  std::cout << "P2 - RAH - SERIAL - NDVI MIN & MAX, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   // ============== COMPUTE INITIAL RAH
 
   begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  initial_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
   for (int j = 0; j < threads_num; j++)
   {
     int start_line = j * lines_per_thread;
@@ -481,14 +481,14 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
     threads[k].join();
 
   end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  // std::cout << "P2 - RAH - SERIAL - RAH INITIAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  general_time = duration_cast<nanoseconds>(end - begin).count();
+  final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+  std::cout << "P2 - RAH - SERIAL - RAH INITIAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   // ============== COMPUTE FINAL RAH
 
-  begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  begin_rah_c = system_clock::now();
+  initial_time_rah_c = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
   double hot_pixel_aerodynamic = aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col];
   hot_pixel.aerodynamic_resistance.push_back(hot_pixel_aerodynamic);
@@ -526,7 +526,7 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
 
     // ==== Paralelization core
     begin_core = system_clock::now();
-    initial_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    initial_time_core = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
     for (int j = 0; j < threads_num; j++)
     {
@@ -544,9 +544,9 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
       threads[k].join();
 
     end_core = system_clock::now();
-    general_time_core = duration_cast<milliseconds>(end_core - begin_core).count();
-    final_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-    // std::cout << "P2 - RAH - PARALLEL - CORE, " << general_time_core << ", " << initial_time_core << ", " << final_time_core << std::endl;
+    general_time_core = duration_cast<nanoseconds>(end_core - begin_core).count();
+    final_time_core = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+    std::cout << "P2 - RAH - PARALLEL - CORE, " << general_time_core << ", " << initial_time_core << ", " << final_time_core << std::endl;
     // ==== 
 
     double rah_hot = this->aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col];
@@ -556,14 +556,14 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
     cold_pixel.aerodynamic_resistance.push_back(rah_cold);
   }
   end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  general_time = duration_cast<nanoseconds>(end - begin).count();
+  final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
   // std::cout << "P2 - RAH - PARALLEL - RAH FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   // ============== COMPUTE H
 
   begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  initial_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
   double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
   double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
@@ -587,9 +587,14 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
     threads[k].join();
 
   end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  // std::cout << "P2 - RAH - H FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  general_time = duration_cast<nanoseconds>(end - begin).count();
+  final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+  std::cout << "P2 - RAH - H FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+
+  end_rah_c = system_clock::now();
+  final_time_rah_c = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+  general_time = duration_cast<nanoseconds>(end_rah_c - begin_rah_c).count();
+  std::cout << "P2 - RAH - FINAL, " << general_time << ", " << initial_time_rah_c << ", " << final_time_rah_c << std::endl;
 };
 
 void Products::latent_heat_flux_function(int width_band, int line)
@@ -663,7 +668,7 @@ void Products::rah_correction_cycle_STEEP(int start_line, int end_line, Candidat
   // system_clock::time_point begin, end;
 
   // begin = system_clock::now();
-  // initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  // initial_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
   for (int line = start_line; line < end_line; line++)
   {
     for (int col = 0; col < this->width_band; col++)
@@ -709,8 +714,8 @@ void Products::rah_correction_cycle_STEEP(int start_line, int end_line, Candidat
     }
   }
   // end = system_clock::now();
-  // general_time = duration_cast<milliseconds>(end - begin).count();
-  // final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  // general_time = duration_cast<nanoseconds>(end - begin).count();
+  // final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
   // std::cout << "P2 - RAH - THREAD: " << start_line << "x" << end_line << ", " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 };
 
