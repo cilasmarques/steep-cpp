@@ -1,5 +1,7 @@
 #include "products.h"
 
+using namespace std::chrono;
+
 Products::Products(uint32 width_band, uint32 height_band)
 {
   this->width_band = width_band;
@@ -430,7 +432,6 @@ void Products::aerodynamic_resistance_fuction(vector<double> ustar_line, int wid
 
 void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num)
 {
-  using namespace std::chrono;
   system_clock::time_point begin, end, begin_core, end_core, begin_rah_c, end_rah_c;
   int64_t general_time, initial_time, final_time, general_time_core, initial_time_core, final_time_core, initial_time_rah_c, final_time_rah_c;  
 
