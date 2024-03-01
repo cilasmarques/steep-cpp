@@ -589,12 +589,12 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   end = system_clock::now();
   general_time = duration_cast<nanoseconds>(end - begin).count();
   final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - H FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
+  std::cout << "P2 - RAH - H, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 
   end_rah_c = system_clock::now();
   final_time_rah_c = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
   general_time = duration_cast<nanoseconds>(end_rah_c - begin_rah_c).count();
-  std::cout << "P2 - RAH - FINAL, " << general_time << ", " << initial_time_rah_c << ", " << final_time_rah_c << std::endl;
+  std::cout << "P2 - RAH - CYCLE, " << general_time << ", " << initial_time_rah_c << ", " << final_time_rah_c << std::endl;
 };
 
 void Products::latent_heat_flux_function(int width_band, int line)
@@ -653,11 +653,35 @@ void Products::rah_initial_value_STEEP(Station station, int start_line, int end_
 {
   for (int line = start_line; line < end_line; line++)
   {
-    d0_fuction(line);
-    zom_fuction(station.A_ZOM, station.B_ZOM, line);
-    ustar_fuction(u10, line);
-    kb_function(ndvi_max, ndvi_min, line);
-    aerodynamic_resistance_fuction(line);
+    system_clock::time_point lai_begin = system_clock::now();
+    int64_t d0_init = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+    d0_fuction(line); //constante
+    std::cout << "Tempo do calculo do d0," << duration_cast<nanoseconds>(system_clock::now() - lai_begin).count() << ","
+    << d0_init << "," << duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count() << std::endl;
+
+    system_clock::time_point zom_begin = system_clock::now();
+    int64_t zom_init = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+    zom_fuction(station.A_ZOM, station.B_ZOM, line); //muda e eh refeito em ambos
+    std::cout << "Tempo do calculo do zom," << duration_cast<nanoseconds>(system_clock::now() - zom_begin).count() << ","
+    << zom_init << "," << duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count() << std::endl;
+
+    system_clock::time_point ustar_begin = system_clock::now();
+    int64_t ustar_init = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+    ustar_fuction(u10, line); //muda e eh refeito em ambos
+    std::cout << "Tempo do calculo do ustar," << duration_cast<nanoseconds>(system_clock::now() - ustar_begin).count() << ","
+    << ustar_init << "," << duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count() << std::endl;
+
+    system_clock::time_point kb_begin = system_clock::now();
+    int64_t kb_init = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+    kb_function(ndvi_max, ndvi_min, line); //constante
+    std::cout << "Tempo do calculo do kb," << duration_cast<nanoseconds>(system_clock::now() - kb_begin).count() << ","
+    << kb_init << "," << duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count() << std::endl;
+
+    system_clock::time_point rah_begin = system_clock::now();
+    int64_t rah_init = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+    aerodynamic_resistance_fuction(line); //muda e eh refeito em ambos
+    std::cout << "Tempo do calculo do rah ini," << duration_cast<nanoseconds>(system_clock::now() - rah_begin).count() << ","
+    << rah_init << "," << duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count() << std::endl;
   }
 }
 
