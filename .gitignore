@@ -1,5 +1,5 @@
 #io data
-output/*
+scenes/output/*
 input/*
 *.txt
 results/*
@@ -36,3 +36,5 @@ results/*
 *.exe
 *.out
 *.app
+
+scene_list
