@@ -1,8 +1,7 @@
 #io data
-scenes/output/*
-input/*
-*.txt
 results/*
+scenes/*
+tests/*
 
 # Prerequisites
 *.d

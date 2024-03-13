@@ -7,4 +7,4 @@ while [ -e /proc/$1 ]; do
   /usr/bin/pidstat -p $1 -d $TIME_BETWEEN_COMMANDS 1 | grep -e '[0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}[ \t]*[0-9]' | awk -v date="$( date +"%s" )" '{ if ($8) $7=$8; if (NF) print date", "$3", "$7", "$4", "$5 ; }' 2> /dev/null
 done
 
-exit
+exit 0

@@ -1,54 +1,102 @@
+## ==== Dependencies
 GCC=g++
 NVCC=nvcc
 CXXFLAGS=-std=c++14 -ltiff
 
-## Docker download and preprocessing
-DOCKER_OUTPUT_PATH="/home/saps/output"
-DOCKER_LANDSAT="landsat_8"
-DOCKER_PATHROW="215065"
-DOCKER_DATE="2017-05-11"
-IMAGES_OUTPUT=$(PWD)/scenes/output
+## ==== Download and preprocessing
+DOCKER_OUTPUT_PATH=/home/saps/output
+IMAGES_OUTPUT=./scenes
 
-## Execution
-METHOD="$(METHOD)"
-INPUT_DATA_PATH="$(INPUT_DATA_PATH)"
-THREADS=256
-BLOCKS=6504
-LANDCOVER_DATA_FILE=""
-OUTPUT_DATA_PATH="./output"
+## Note: The following variables are used to run the docker containers and are not used in the Makefile itself
+#  		 	 The container only retrieves images from between 1984 and 2017. Furthermore, not every day has  
+#			 	 images of a specific region because the satellite in orbit collects images every 3 days.
+# Samples:
+# | landsat_8  | landsat_5  | landsat_7
+# | 215065     | 215065     |
+# | 2017-05-11 | 1990-03-14 | 
+IMAGE_LANDSAT="landsat_8"
+IMAGE_PATHROW="215065"
+IMAGE_DATE="2017-05-11"
 
+## ==== Execution
+METHOD=0
+THREADS=1
+BLOCKS=82
+OUTPUT_DATA_PATH=./results
+LANDCOVER_DATA_FILE=./_empty_landcover.txt
+INPUT_DATA_PATH=$(IMAGES_OUTPUT)/$(IMAGE_LANDSAT)_$(IMAGE_PATHROW)_$(IMAGE_DATE)/final_results
 
-all:
-	$(GCC) -g ./src/*.cpp -o ./src/main $(CXXFLAGS)
-
-nvcc:
-	$(NVCC) -g ./src/*.cu -o ./src/main $(CXXFLAGS)
-
-clean:
+clean-all:
 	rm -rf ./src/main
+	rm -rf $(OUTPUT_DATA_PATH)/*
+	rm -rf $(IMAGES_OUTPUT)/*
 
 clean-output:
-	rm -rf ./output/*	
+	rm -rf $(OUTPUT_DATA_PATH)/*
 
-LC08:
-	./src/main $(INPUT_DATA_PATH)/B2.tif $(INPUT_DATA_PATH)/B3.tif $(INPUT_DATA_PATH)/B4.tif $(INPUT_DATA_PATH)/B5.tif $(INPUT_DATA_PATH)/B6.tif $(INPUT_DATA_PATH)/B10.tif $(INPUT_DATA_PATH)/B7.tif $(INPUT_DATA_PATH)/final_tal.tif $(INPUT_DATA_PATH)/MTL.txt $(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) -meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) -blocks=$(BLOCKS) > $(OUTPUT_DATA_PATH)/timestamp.csv
+clean-test:
+	rm -rf ./tests/*
+	rm -rf $(OUTPUT_DATA_PATH)/*
 
-TM05:
-	./src/main $(INPUT_DATA_PATH)/B1.tif $(INPUT_DATA_PATH)/B2.tif $(INPUT_DATA_PATH)/B3.tif $(INPUT_DATA_PATH)/B4.tif $(INPUT_DATA_PATH)/B5.tif $(INPUT_DATA_PATH)/B6.tif $(INPUT_DATA_PATH)/B7.tif $(INPUT_DATA_PATH)/final_tal.tif $(INPUT_DATA_PATH)/MTL.txt $(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) -meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) -blocks=$(BLOCKS) > $(OUTPUT_DATA_PATH)/timestamp.csv
+clean-scenes:
+	rm -rf $(IMAGES_OUTPUT)/*
 
-docker-run-download:
-	docker run -v $(IMAGES_OUTPUT):$(DOCKER_OUTPUT_PATH) \
+build-cpp:
+	$(GCC) -g ./src/*.cpp -o ./src/main $(CXXFLAGS)
+
+build-nvcc:
+	$(NVCC) -g ./src/*.cu -o ./src/main $(CXXFLAGS)
+
+docker-landsat-download:
+	docker run --user $(id -u):$(id -g) \
+		-v $(IMAGES_OUTPUT):$(DOCKER_OUTPUT_PATH) \
 		-e OUTPUT_PATH=$(DOCKER_OUTPUT_PATH) \
-		-e LANDSAT=$(DOCKER_LANDSAT) \
-		-e PATHROW=$(DOCKER_PATHROW) \
-		-e DATE=$(DOCKER_DATE) \
-		cilasmarques/landsat-download
+		-e LANDSAT=$(IMAGE_LANDSAT) \
+		-e PATHROW=$(IMAGE_PATHROW) \
+		-e DATE=$(IMAGE_DATE) \
+		cilasmarques/landsat-download:latest
 
-docker-run-preprocess:
-	docker run -v $(IMAGES_OUTPUT):$(DOCKER_OUTPUT_PATH) \
+docker-landsat-preprocess:
+	docker run --user $(id -u):$(id -g) \
+		-v $(IMAGES_OUTPUT):$(DOCKER_OUTPUT_PATH) \
 		-e OUTPUT_PATH=$(DOCKER_OUTPUT_PATH) \
-		-e LANDSAT=$(DOCKER_LANDSAT) \
-		-e PATHROW=$(DOCKER_PATHROW) \
-		-e DATE=$(DOCKER_DATE) \
+		-e LANDSAT=$(IMAGE_LANDSAT) \
+		-e PATHROW=$(IMAGE_PATHROW) \
+		-e DATE=$(IMAGE_DATE) \
 		cilasmarques/landsat-preprocess:latest
 
+exec-landsat8:
+	./run-exp.sh \
+		$(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF $(INPUT_DATA_PATH)/B4.TIF \
+		$(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF $(INPUT_DATA_PATH)/B.TIF \
+		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
+		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
+		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) \ 
+		-blocks=$(BLOCKS) > $(OUTPUT_DATA_PATH)/timestamp.csv & 
+
+exec-landsat5-7:
+	./run-exp.sh \
+		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
+		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
+		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
+		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
+		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) \
+		-blocks=$(BLOCKS) > $(OUTPUT_DATA_PATH)/timestamp.csv &
+
+test-landsat8:
+	./run-test.sh \
+		$(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF $(INPUT_DATA_PATH)/B4.TIF \
+		$(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF $(INPUT_DATA_PATH)/B.TIF \
+		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
+		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
+		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) \ 
+		-blocks=$(BLOCKS) &
+
+test-landsat5-7:
+	./run-test.sh \
+		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
+		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
+		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
+		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
+		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) \
+		-blocks=$(BLOCKS) &

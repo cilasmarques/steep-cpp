@@ -8,4 +8,4 @@ while [ -e /proc/$1 ]; do
   sleep $TIME_BETWEEN_COMMANDS
 done
 
-exit
+exit 0
