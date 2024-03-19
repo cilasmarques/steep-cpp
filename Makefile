@@ -28,18 +28,18 @@ INPUT_DATA_PATH=$(IMAGES_OUTPUT)/$(IMAGE_LANDSAT)_$(IMAGE_PATHROW)_$(IMAGE_DATE)
 
 clean-all:
 	rm -rf ./src/main
-	rm -rf $(OUTPUT_DATA_PATH)/*
-	rm -rf $(IMAGES_OUTPUT)/*
-
-clean-output:
-	rm -rf $(OUTPUT_DATA_PATH)/*
-
-clean-test:
 	rm -rf ./tests/*
+	rm -rf $(IMAGES_OUTPUT)/*
 	rm -rf $(OUTPUT_DATA_PATH)/*
+
+clean-tests:
+	rm -rf ./tests/*
 
 clean-scenes:
 	rm -rf $(IMAGES_OUTPUT)/*
+
+clean-results:
+	rm -rf $(OUTPUT_DATA_PATH)/*
 
 build-cpp:
 	$(GCC) -g ./src/*.cpp -o ./src/main $(CXXFLAGS)
@@ -47,8 +47,11 @@ build-cpp:
 build-nvcc:
 	$(NVCC) -g ./src/*.cu -o ./src/main $(CXXFLAGS)
 
+fix-permissions:
+	sudo chmod -R 777 $(INPUT_DATA_PATH)/*
+
 docker-landsat-download:
-	docker run --user $(id -u):$(id -g) \
+	docker run \
 		-v $(IMAGES_OUTPUT):$(DOCKER_OUTPUT_PATH) \
 		-e OUTPUT_PATH=$(DOCKER_OUTPUT_PATH) \
 		-e LANDSAT=$(IMAGE_LANDSAT) \
@@ -57,7 +60,7 @@ docker-landsat-download:
 		cilasmarques/landsat-download:latest
 
 docker-landsat-preprocess:
-	docker run --user $(id -u):$(id -g) \
+	docker run \
 		-v $(IMAGES_OUTPUT):$(DOCKER_OUTPUT_PATH) \
 		-e OUTPUT_PATH=$(DOCKER_OUTPUT_PATH) \
 		-e LANDSAT=$(IMAGE_LANDSAT) \
