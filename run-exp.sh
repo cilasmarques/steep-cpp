@@ -17,10 +17,10 @@ sh scripts/collect-gpu-memory-usage.sh $PID > $OUTPUT_DATA_PATH/mem-gpu.csv &
 wait $PID
 
 # Para os scripts de monitoramento
-kill $(pidof -s collect-cpu-usage.sh)
-kill $(pidof -s collect-memory-usage.sh)
-kill $(pidof -s collect-disk-usage.sh)
-kill $(pidof -s collect-gpu-usage.sh)
-kill $(pidof -s collect-gpu-memory-usage.sh)
+# kill $(pidof -s collect-cpu-usage.sh)
+# kill $(pidof -s collect-memory-usage.sh)
+# kill $(pidof -s collect-disk-usage.sh)
+# kill $(pidof -s collect-gpu-usage.sh)
+# kill $(pidof -s collect-gpu-memory-usage.sh)
 
 exit 0

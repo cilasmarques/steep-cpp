@@ -20,11 +20,11 @@ for i in $(seq -f "%02g" 1 3); do
   wait $PID
 
   # Para os scripts de monitoramento
-  kill $(pidof -s collect-cpu-usage.sh)
-  kill $(pidof -s collect-memory-usage.sh)
-  kill $(pidof -s collect-disk-usage.sh)
-  kill $(pidof -s collect-gpu-usage.sh)
-  kill $(pidof -s collect-gpu-memory-usage.sh)
+  # kill $(pidof -s collect-cpu-usage.sh)
+  # kill $(pidof -s collect-memory-usage.sh)
+  # kill $(pidof -s collect-disk-usage.sh)
+  # kill $(pidof -s collect-gpu-usage.sh)
+  # kill $(pidof -s collect-gpu-memory-usage.sh)
 
   # Put the data in the final folder
   mkdir -p $TEST_OUTPUT_PATH/experiment${i}

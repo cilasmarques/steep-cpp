@@ -26,6 +26,14 @@ OUTPUT_DATA_PATH=./results
 LANDCOVER_DATA_FILE=./_empty_landcover.txt
 INPUT_DATA_PATH=$(IMAGES_OUTPUT)/$(IMAGE_LANDSAT)_$(IMAGE_PATHROW)_$(IMAGE_DATE)/final_results
 
+# init:
+# 	sudo apt-get install nvidia-cuda-toolkit
+# 	sudo add-apt-repository ppa:ubuntugis/ppa && sudo apt-get update 
+# 	sudo apt-get install gdal-bin
+# 	sudo apt-get install libtiff5-dev
+# 	sudo apt-get install docker.io
+# 	sudo apt-get install nvidia-docker2
+
 clean-all:
 	rm -rf ./src/main
 	rm -rf ./tests/*
@@ -97,6 +105,24 @@ test-landsat8:
 
 test-landsat5-7:
 	./run-test.sh \
+		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
+		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
+		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
+		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
+		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) \
+		-blocks=$(BLOCKS) &
+
+nsys-landsat8:
+	nsys profile --cudabacktrace=all -o $(BLOCKS)-blocks ./run-exp.sh \
+		$(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF $(INPUT_DATA_PATH)/B4.TIF \
+		$(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF $(INPUT_DATA_PATH)/B.TIF \
+		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
+		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
+		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) \ 
+		-blocks=$(BLOCKS) & 
+
+nsys-landsat5-7:
+	nsys profile --cudabacktrace=all -o $(BLOCKS)-blocks  ./run-exp.sh \
 		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
 		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
