@@ -1,10 +1,12 @@
 #!/bin/bash
 
+OUTPUT_DATA_PATH=./output
+BLOCKS=$(echo $@ | grep -oP 'BLOCKS=\K[0-9]+')
+
 # Executa ./src/main e passa todos os argumentos para ele
-./src/main "$@" &
+nsys profile --cudabacktrace=all -o ./reports/$BLOCKS-blocks ./src/main "$@" > $OUTPUT_DATA_PATH/timestamp.csv  &
 
 PID=$!
-OUTPUT_DATA_PATH=./outputs
 
 # Inicia os scripts de monitoramento em background
 sh scripts/collect-cpu-usage.sh $PID > $OUTPUT_DATA_PATH/cpu.csv &

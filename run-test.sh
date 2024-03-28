@@ -3,7 +3,7 @@
 cd -P -- "$(dirname -- "$0")"
 
 TEST_OUTPUT_PATH=./tests
-OUTPUT_DATA_PATH=./outputs
+OUTPUT_DATA_PATH=./output
 
 for i in $(seq -f "%02g" 1 3); do
   ./src/main "$@" > $OUTPUT_DATA_PATH/timestamp.csv &

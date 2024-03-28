@@ -1,6 +1,6 @@
 #io data
 reports/*
-outputs/*
+output/*
 scenes/*
 tests/*
 

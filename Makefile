@@ -46,11 +46,15 @@ init:
 clean-all:
 	rm -rf ./src/main
 	rm -rf ./tests/*
+	rm -rf ./reports/*
 	rm -rf $(IMAGES_OUTPUT)/*
 	rm -rf $(OUTPUT_DATA_PATH)/*
 
 clean-tests:
 	rm -rf ./tests/*
+
+clean-reports:
+	rm -rf ./reports/*
 
 clean-scenes:
 	rm -rf $(IMAGES_OUTPUT)/*
@@ -92,7 +96,7 @@ exec-landsat8:
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
 		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
 		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) \ 
-		-blocks=$(BLOCKS) > $(OUTPUT_DATA_PATH)/timestamp.csv & 
+		-blocks=$(BLOCKS) & 
 
 exec-landsat5-7:
 	./run-exp.sh \
@@ -101,7 +105,7 @@ exec-landsat5-7:
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
 		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
 		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) \
-		-blocks=$(BLOCKS) > $(OUTPUT_DATA_PATH)/timestamp.csv &
+		-blocks=$(BLOCKS) &
 
 test-landsat8:
 	./run-test.sh \
@@ -114,24 +118,6 @@ test-landsat8:
 
 test-landsat5-7:
 	./run-test.sh \
-		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
-		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
-		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
-		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
-		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) \
-		-blocks=$(BLOCKS) &
-
-nsys-landsat8:
-	nsys profile --cudabacktrace=all -o ./reports/$(BLOCKS)-blocks ./run-exp.sh \
-		$(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF $(INPUT_DATA_PATH)/B4.TIF \
-		$(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF $(INPUT_DATA_PATH)/B.TIF \
-		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
-		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
-		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) \ 
-		-blocks=$(BLOCKS) & 
-
-nsys-landsat5-7:
-	nsys profile --cudabacktrace=all -o ./reports/$(BLOCKS)-blocks  ./run-exp.sh \
 		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
 		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \

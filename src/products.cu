@@ -457,10 +457,13 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
   HANDLE_ERROR(cudaGetDeviceProperties(&deviceProp, dev));
   HANDLE_ERROR(cudaSetDevice(dev));
 
-  int dimy = 1;
-  int dimx = 1024;
-  dim3 blockSize(dimx, dimy);
-  dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, blocks_num);
+  int num_sms = deviceProp.multiProcessorCount;
+  int num_blocks = deviceProp.maxBlocksPerMultiProcessor * num_sms;
+  int num_threads = deviceProp.maxThreadsPerMultiProcessor * num_blocks;
+
+  dim3 blockSize(1, 1024);
+  dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, (height_band + blockSize.y - 1) / blockSize.y);
+  // dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, blocks_num);
 
   // ============== COMPUTE NDVI MIN MAX
 
@@ -569,7 +572,8 @@ void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_
     begin_core = system_clock::now();
     initial_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
-    correctionCycleSTEEP<<<gridSize, blockSize>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
+    // correctionCycleSTEEP<<<gridSize, blockSize>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
+    correctionCycleSTEEP<<<num_threads, num_blocks>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 
