@@ -7,7 +7,8 @@ OUTPUT_DATA_PATH=./output
 REPORTS_PATH=./reports
 
 for i in $(seq -f "%02g" 1 3); do
-  ./src/main "$@" > $OUTPUT_DATA_PATH/timestamp.csv &
+  nsys profile -o ./$REPORTS_PATH/nsys ./src/main "$@" 2>&1 | grep '^P' > $OUTPUT_DATA_PATH/timestamp.csv &
+
   PID=$!
 
   # Inicia os scripts de monitoramento em background
