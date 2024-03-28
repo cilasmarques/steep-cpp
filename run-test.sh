@@ -4,6 +4,7 @@ cd -P -- "$(dirname -- "$0")"
 
 TEST_OUTPUT_PATH=./tests
 OUTPUT_DATA_PATH=./output
+REPORTS_PATH=./reports
 
 for i in $(seq -f "%02g" 1 3); do
   ./src/main "$@" > $OUTPUT_DATA_PATH/timestamp.csv &
@@ -30,6 +31,7 @@ for i in $(seq -f "%02g" 1 3); do
   mkdir -p $TEST_OUTPUT_PATH/experiment${i}
   mv $OUTPUT_DATA_PATH/*.csv $TEST_OUTPUT_PATH/experiment${i}
   mv $OUTPUT_DATA_PATH/*.txt $TEST_OUTPUT_PATH/experiment${i}
+  mv $REPORTS_PATH/*.nsys-rep $TEST_OUTPUT_PATH/experiment${i}
   rm -rf $OUTPUT_DATA_PATH/*
 
   sleep 1

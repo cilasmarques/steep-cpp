@@ -1,10 +1,10 @@
 #!/bin/bash
 
+REPORTS_PATH=./reports
 OUTPUT_DATA_PATH=./output
-BLOCKS=$(echo $@ | grep -oP 'BLOCKS=\K[0-9]+')
 
 # Executa ./src/main e passa todos os argumentos para ele
-nsys profile --cudabacktrace=all -o ./reports/$BLOCKS-blocks ./src/main "$@" > $OUTPUT_DATA_PATH/timestamp.csv  &
+nsys profile -o ./$REPORTS_PATH/nsys ./src/main "$@" 2>&1 | grep '^P' > $OUTPUT_DATA_PATH/timestamp.csv &
 
 PID=$!
 

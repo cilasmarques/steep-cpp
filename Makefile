@@ -95,8 +95,7 @@ exec-landsat8:
 		$(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF $(INPUT_DATA_PATH)/B.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
 		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
-		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) \ 
-		-blocks=$(BLOCKS) & 
+		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) -blocks=$(BLOCKS) & 
 
 exec-landsat5-7:
 	./run-exp.sh \
@@ -104,8 +103,7 @@ exec-landsat5-7:
 		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
 		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
-		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) \
-		-blocks=$(BLOCKS) &
+		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) -blocks=$(BLOCKS) &
 
 test-landsat8:
 	./run-test.sh \
