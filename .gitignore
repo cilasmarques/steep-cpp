@@ -1,5 +1,6 @@
 #io data
-results/*
+reports/*
+outputs/*
 scenes/*
 tests/*
 

@@ -4,7 +4,7 @@
 ./src/main "$@" &
 
 PID=$!
-OUTPUT_DATA_PATH=./results
+OUTPUT_DATA_PATH=./outputs
 
 # Inicia os scripts de monitoramento em background
 sh scripts/collect-cpu-usage.sh $PID > $OUTPUT_DATA_PATH/cpu.csv &

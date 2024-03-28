@@ -2,6 +2,8 @@
 GCC=g++
 NVCC=nvcc
 CXXFLAGS=-std=c++14 -ltiff
+NSYS_PACKAGE_URL=https://developer.nvidia.com/downloads/assets/tools/secure/nsight-systems/2024_2/nsightsystems-linux-public-2024.2.1.106-3403790.run
+
 
 ## ==== Download and preprocessing
 DOCKER_OUTPUT_PATH=/home/saps/output
@@ -22,7 +24,7 @@ IMAGE_DATE="2017-05-11"
 METHOD=0
 THREADS=1
 BLOCKS=82
-OUTPUT_DATA_PATH=./results
+OUTPUT_DATA_PATH=./output
 LANDCOVER_DATA_FILE=./_empty_landcover.txt
 INPUT_DATA_PATH=$(IMAGES_OUTPUT)/$(IMAGE_LANDSAT)_$(IMAGE_PATHROW)_$(IMAGE_DATE)/final_results
 
@@ -33,6 +35,13 @@ INPUT_DATA_PATH=$(IMAGES_OUTPUT)/$(IMAGE_LANDSAT)_$(IMAGE_PATHROW)_$(IMAGE_DATE)
 # 	sudo apt-get install libtiff5-dev
 # 	sudo apt-get install docker.io
 # 	sudo apt-get install nvidia-docker2
+
+init:
+	wget $(NSYS_PACKAGE_URL)
+	chmod +x nsightsystems-linux-public-2024.2.1.106-3403790.run
+	./nsightsystems-linux-public-2024.2.1.106-3403790.run
+	rm nsightsystems-linux-public-2024.2.1.106-3403790.run
+	
 
 clean-all:
 	rm -rf ./src/main
@@ -46,7 +55,7 @@ clean-tests:
 clean-scenes:
 	rm -rf $(IMAGES_OUTPUT)/*
 
-clean-results:
+clean-output:
 	rm -rf $(OUTPUT_DATA_PATH)/*
 
 build-cpp:
@@ -113,7 +122,7 @@ test-landsat5-7:
 		-blocks=$(BLOCKS) &
 
 nsys-landsat8:
-	nsys profile --cudabacktrace=all -o $(BLOCKS)-blocks ./run-exp.sh \
+	nsys profile --cudabacktrace=all -o ./reports/$(BLOCKS)-blocks ./run-exp.sh \
 		$(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF $(INPUT_DATA_PATH)/B4.TIF \
 		$(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF $(INPUT_DATA_PATH)/B.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
@@ -122,7 +131,7 @@ nsys-landsat8:
 		-blocks=$(BLOCKS) & 
 
 nsys-landsat5-7:
-	nsys profile --cudabacktrace=all -o $(BLOCKS)-blocks  ./run-exp.sh \
+	nsys profile --cudabacktrace=all -o ./reports/$(BLOCKS)-blocks  ./run-exp.sh \
 		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
 		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
