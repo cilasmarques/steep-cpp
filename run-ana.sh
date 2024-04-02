@@ -2,12 +2,11 @@
 
 cd -P -- "$(dirname -- "$0")"
 
-TEST_OUTPUT_PATH=./tests
+ANALYSIS_OUTPUT_PATH=./analysis
 OUTPUT_DATA_PATH=./output
-REPORTS_PATH=./reports
 
 for i in $(seq -f "%02g" 1 3); do
-  nsys profile -o ./$REPORTS_PATH/nsys ./src/main "$@" 2>&1 | grep '^P' > $OUTPUT_DATA_PATH/timestamp.csv &
+  ./src/main "$@" 2>&1 | grep '^P' > $OUTPUT_DATA_PATH/timestamp.csv &
 
   PID=$!
 
@@ -29,10 +28,9 @@ for i in $(seq -f "%02g" 1 3); do
   # kill $(pidof -s collect-gpu-memory-usage.sh)
 
   # Put the data in the final folder
-  mkdir -p $TEST_OUTPUT_PATH/experiment${i}
-  mv $OUTPUT_DATA_PATH/*.csv $TEST_OUTPUT_PATH/experiment${i}
-  mv $OUTPUT_DATA_PATH/*.txt $TEST_OUTPUT_PATH/experiment${i}
-  mv $REPORTS_PATH/*.nsys-rep $TEST_OUTPUT_PATH/experiment${i}
+  mkdir -p $ANALYSIS_OUTPUT_PATH/experiment${i}
+  mv $OUTPUT_DATA_PATH/*.csv $ANALYSIS_OUTPUT_PATH/experiment${i}
+  mv $OUTPUT_DATA_PATH/*.txt $ANALYSIS_OUTPUT_PATH/experiment${i}
   rm -rf $OUTPUT_DATA_PATH/*
 
   sleep 1

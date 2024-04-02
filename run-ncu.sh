@@ -4,7 +4,7 @@ REPORTS_PATH=./nvidia
 OUTPUT_DATA_PATH=./output
 
 # Executa ./src/main e passa todos os argumentos para ele
-nsys profile -o ./$REPORTS_PATH/nsys ./src/main "$@" 2>&1 | grep '^P' > $OUTPUT_DATA_PATH/timestamp.csv &
+ncu --target-processes all --set full --csv --kernel-latency=true --kernel-parallel=true --kernel-usage=true --kernel-memory-usage=true -o ./$REPORTS_PATH/ncu ./src/main "$@" 2>&1 | grep '^P' > $OUTPUT_DATA_PATH/timestamp.csv &
 
 PID=$!
 

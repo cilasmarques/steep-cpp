@@ -2,8 +2,6 @@
 GCC=g++
 NVCC=nvcc
 CXXFLAGS=-std=c++14 -ltiff
-NSYS_PACKAGE_URL=https://developer.nvidia.com/downloads/assets/tools/secure/nsight-systems/2024_2/nsightsystems-linux-public-2024.2.1.106-3403790.run
-
 
 ## ==== Download and preprocessing
 DOCKER_OUTPUT_PATH=/home/saps/output
@@ -29,32 +27,28 @@ LANDCOVER_DATA_FILE=./_empty_landcover.txt
 INPUT_DATA_PATH=$(IMAGES_OUTPUT)/$(IMAGE_LANDSAT)_$(IMAGE_PATHROW)_$(IMAGE_DATE)/final_results
 
 # init:
+#   NSYS_PACKAGE_URL=https://developer.nvidia.com/downloads/assets/tools/secure/nsight-systems/2024_2/nsightsystems-linux-public-2024.2.1.106-3403790.run
 # 	sudo apt-get install nvidia-cuda-toolkit
 # 	sudo add-apt-repository ppa:ubuntugis/ppa && sudo apt-get update 
 # 	sudo apt-get install gdal-bin
 # 	sudo apt-get install libtiff5-dev
-# 	sudo apt-get install docker.io
-# 	sudo apt-get install nvidia-docker2
-
-init:
-	wget $(NSYS_PACKAGE_URL)
-	chmod +x nsightsystems-linux-public-2024.2.1.106-3403790.run
-	./nsightsystems-linux-public-2024.2.1.106-3403790.run
-	rm nsightsystems-linux-public-2024.2.1.106-3403790.run
-	
+#		wget $(NSYS_PACKAGE_URL)
+#		chmod +x nsightsystems-linux-public-2024.2.1.106-3403790.run
+#		./nsightsystems-linux-public-2024.2.1.106-3403790.run
+#		rm nsightsystems-linux-public-2024.2.1.106-3403790.run
 
 clean-all:
 	rm -rf ./src/main
-	rm -rf ./tests/*
-	rm -rf ./reports/*
+	rm -rf ./analysis/*
+	rm -rf ./nvidia/*
 	rm -rf $(IMAGES_OUTPUT)/*
 	rm -rf $(OUTPUT_DATA_PATH)/*
 
-clean-tests:
-	rm -rf ./tests/*
+clean-analysis:
+	rm -rf ./analysis/*
 
-clean-reports:
-	rm -rf ./reports/*
+clean-nvidia:
+	rm -rf ./nvidia/*
 
 clean-scenes:
 	rm -rf $(IMAGES_OUTPUT)/*
@@ -63,10 +57,10 @@ clean-output:
 	rm -rf $(OUTPUT_DATA_PATH)/*
 
 build-cpp:
-	$(GCC) -g ./src/*.cpp -o ./src/main $(CXXFLAGS)
+	$(GCC) -g ./src/cpp/*.cpp -o ./src/main $(CXXFLAGS)
 
 build-nvcc:
-	$(NVCC) -g ./src/*.cu -o ./src/main $(CXXFLAGS)
+	$(NVCC) -g ./src/cuda/*.cu -o ./src/main $(CXXFLAGS)
 
 fix-permissions:
 	sudo chmod -R 777 $(INPUT_DATA_PATH)/*
@@ -105,16 +99,32 @@ exec-landsat5-7:
 		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
 		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) -blocks=$(BLOCKS) &
 
-test-landsat8:
-	./run-test.sh \
+ncu-landsat5-7:
+	./run-ncu.sh \
+		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
+		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
+		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
+		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
+		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) -blocks=$(BLOCKS) &
+
+ncu-landsat8:
+	./run-ncu.sh \
+		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
+		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
+		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
+		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
+		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) -blocks=$(BLOCKS) &
+
+analisys-landsat8:
+	./run-ana.sh \
 		$(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF $(INPUT_DATA_PATH)/B4.TIF \
 		$(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF $(INPUT_DATA_PATH)/B.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
 		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
 		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) -blocks=$(BLOCKS) &
 
-test-landsat5-7:
-	./run-test.sh \
+analisys-landsat5-7:
+	./run-ana.sh \
 		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
 		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \

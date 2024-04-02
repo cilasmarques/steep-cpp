@@ -1,8 +1,9 @@
 #io data
-reports/*
+nvidia/*
 output/*
 scenes/*
-tests/*
+analysis/*
+dev*
 
 # Prerequisites
 *.d
