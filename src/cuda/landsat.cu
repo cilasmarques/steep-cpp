@@ -31,8 +31,8 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   TIFF *tal = TIFFOpen(this->tal_path.c_str(), "rm");
   TIFFs_reader.check_open_tiff(tal);
 
-  uint16 sample_bands;
-  uint32 height_band, width_band;
+  uint16_t sample_bands;
+  uint32_t height_band, width_band;
   TIFFGetField(bands_resampled[1], TIFFTAG_IMAGELENGTH, &height_band);
   TIFFGetField(bands_resampled[1], TIFFTAG_IMAGEWIDTH, &width_band);
   TIFFGetField(bands_resampled[1], TIFFTAG_SAMPLEFORMAT, &sample_bands);
@@ -164,70 +164,4 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   general_time = duration_cast<milliseconds>(phase2_end - phase2_begin).count();
   phase2_final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   std::cout << "P2 - TOTAL," << general_time << "," << phase2_initial_time << "," << phase2_final_time << std::endl;
-
-  // =====  END + OUTPUTS =====
-
-  string outPath = "./output/extra.txt";
-  std::ofstream outputThreads(outPath);
-  std::streambuf* coutThreads = std::cout.rdbuf();
-  std::cout.rdbuf(outputThreads.rdbuf());
-  std::cout << "informed threads: " << threads_num << std::endl;
-  std::cout << "informed blocks: " << blocks_num << std::endl;
-  std::cout << "images width: " << width_band << std::endl;
-  std::cout << "images height: " << height_band << std::endl;
-
-  int deviceCount;
-  cudaGetDeviceCount(&deviceCount);
-  for (int device = 0; device < deviceCount; ++device) {
-      cudaDeviceProp deviceProp;
-      cudaGetDeviceProperties(&deviceProp, device);
-      
-      std::cout << "Device " << device << " is a " << deviceProp.name << std::endl;
-      std::cout << "Device " << device << " has " << deviceProp.multiProcessorCount << " SMs" << std::endl;
-      std::cout << "Device " << device << " has " << deviceProp.persistingL2CacheMaxSize  << " bytes of L2 cache" << std::endl;
-      std::cout << "Device " << device << " has " << deviceProp.concurrentKernels << " concurrent kernels" << std::endl;
-      std::cout << "Device " << device << " has " << deviceProp.maxBlocksPerMultiProcessor << " max blocks per SM" << std::endl;
-      std::cout << "Device " << device << " has " << deviceProp.maxThreadsPerMultiProcessor << " max threads per SM" << std::endl;
-      std::cout << "Device " << device << " has " << deviceProp.maxGridSize << " max grid size" << std::endl;
-  }
-
-  // std::ofstream outputProds("./output/products.txt");
-  // std::streambuf* coutProds = std::cout.rdbuf();
-  // std::cout.rdbuf(outputProds.rdbuf());
-
-  // std::cout << " ==== albedo" << std::endl;
-  // printVector2x2(products.albedo_vector);
-
-  // std::cout << " ==== ndvi" << std::endl;
-  // printVector2x2(products.ndvi_vector);
-
-  // std::cout << " ==== net_radiation" << std::endl;
-  // printVector2x2(products.net_radiation_vector);
-
-  // std::cout << " ==== soil_heat" << std::endl;
-  // printVector2x2(products.soil_heat_vector);
-
-  // std::cout << " ==== sensible_heat_flux" << std::endl;
-  // printVector2x2(products.sensible_heat_flux_vector);
-
-  // std::cout << " ==== latent_heat_flux" << std::endl;
-  // printVector2x2(products.latent_heat_flux_vector);
-
-  // std::cout << " ==== net_radiation_24h" << std::endl;
-  // printVector2x2(products.net_radiation_24h_vector);
-
-  // std::cout << " ==== evapotranspiration_fraction" << std::endl;
-  // printVector2x2(products.evapotranspiration_fraction_vector);
-
-  // std::cout << " ==== sensible_heat_flux_24h" << std::endl;
-  // printVector2x2(products.sensible_heat_flux_24h_vector);
-
-  // std::cout << " ==== latent_heat_flux_24h" << std::endl;
-  // printVector2x2(products.latent_heat_flux_24h_vector);
-
-  // std::cout << " ==== evapotranspiration_24h" << std::endl;
-  // printVector2x2(products.evapotranspiration_24h_vector);
-
-  // std::cout << " ==== evapotranspiration" << std::endl;
-  // printVector2x2(products.evapotranspiration_vector);
 };

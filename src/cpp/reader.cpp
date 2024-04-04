@@ -16,7 +16,7 @@ Reader::Reader()
  * @param  _byteSize: Byte size.
  * @param  _buffer: Buffer.
  */
-Reader::Reader(uint16 _sampleFormat, uint8 _byteSize, tdata_t _buffer)
+Reader::Reader(uint16_t _sampleFormat, uint8_t _byteSize, tdata_t _buffer)
 {
   sampleFormat = _sampleFormat;
   byteSize = _byteSize;
@@ -28,22 +28,22 @@ Reader::Reader(uint16 _sampleFormat, uint8 _byteSize, tdata_t _buffer)
  * @param  column: Number of column of the pixel.
  * @retval Value of the pixel.
  */
-double Reader::read_tiff_pixel(uint32 column)
+double Reader::read_tiff_pixel(uint32_t column)
 {
   double ret = 0;
   switch (sampleFormat)
   {
   case 1:
   {
-    uint64 value = 0;
-    memcpy(&value, buffer + (column * byteSize), byteSize);
+    uint64_t value = 0;
+    memcpy(&value, static_cast<unsigned char*>(buffer) + (column * byteSize), byteSize);
     ret = value;
   }
   break;
   case 2:
   {
-    int64 value = 0;
-    memcpy(&value, buffer + (column * byteSize), byteSize);
+    int64_t value = 0;
+    memcpy(&value, static_cast<unsigned char*>(buffer) + (column * byteSize), byteSize);
     ret = value;
   }
   break;
@@ -53,21 +53,21 @@ double Reader::read_tiff_pixel(uint32 column)
     case 4:
     {
       float value = 0;
-      memcpy(&value, buffer + (column * byteSize), byteSize);
+      memcpy(&value, static_cast<unsigned char*>(buffer) + (column * byteSize), byteSize);
       ret = value;
     }
     break;
     case 8:
     {
       double value = 0;
-      memcpy(&value, buffer + (column * byteSize), byteSize);
+      memcpy(&value, static_cast<unsigned char*>(buffer) + (column * byteSize), byteSize);
       ret = value;
     }
     break;
     case 16:
     {
       long double value = 0;
-      memcpy(&value, buffer + (column * byteSize), byteSize);
+      memcpy(&value, static_cast<unsigned char*>(buffer) + (column * byteSize), byteSize);
       ret = value;
     }
     break;

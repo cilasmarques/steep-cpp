@@ -60,8 +60,7 @@ __global__ void correctionCycleSTEEP(double *surface_temperature_pointer, double
       double y2 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
       double x200 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
 
-      double psi01, psi2, psi200;
-
+      double psi2, psi200;
       if (!isnan(L) && L > 0)
       {
         psi2 = -5 * ((10 - DISP) / L);

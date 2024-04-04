@@ -7,8 +7,8 @@ bool checkLandCode(int value)
 
 void testLandCoverHomogeneity(TIFF *landCover, vector<vector<double>> &mask_lc_vector)
 {
-  uint16 sample_bands;
-  uint32 height_band, width_band;
+  uint16_t sample_bands;
+  uint32_t height_band, width_band;
   TIFFGetField(landCover, TIFFTAG_IMAGELENGTH, &height_band);
   TIFFGetField(landCover, TIFFTAG_IMAGEWIDTH, &width_band);
   TIFFGetField(landCover, TIFFTAG_SAMPLEFORMAT, &sample_bands);

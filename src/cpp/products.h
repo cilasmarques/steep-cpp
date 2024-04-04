@@ -12,8 +12,8 @@
  */
 struct Products
 {
-  uint32 width_band;
-  uint32 height_band;
+  uint32_t width_band;
+  uint32_t height_band;
 
   vector<vector<vector<double>>> radiance_vector;
   vector<vector<vector<double>>> reflectance_vector;
@@ -47,24 +47,24 @@ struct Products
   vector<vector<double>> evapotranspiration_24h_vector;
   vector<vector<double>> evapotranspiration_vector;
 
-  Products(uint32 width_band, uint32 height_band);
+  Products(uint32_t width_band, uint32_t height_band);
 
-  void radiance_function(TIFF **bands_resampled, uint32 width_band, uint16 sample_bands, MTL mtl, Sensor sensor, int line);
-  void reflectance_function(TIFF **bands_resampled, uint32 width_band, uint16 sample_bands, MTL mtl, Sensor sensor, int line);
-  void albedo_function(Reader tal_reader, Sensor sensor, uint32 width_band, int number_sensor, int line);
-  void ndvi_function(uint32 width_band, int line);
-  void pai_function(uint32 width_band, int line);
-  void lai_function(uint32 width_band, int line);
-  void evi_function(uint32 width_band, int line);
-  void enb_emissivity_function(uint32 width_band, int line);
-  void eo_emissivity_function(uint32 width_band, int line);
-  void ea_emissivity_function(Reader tal_reader, uint32 width_band, int line);
-  void surface_temperature_function(int number_sensor, uint32 width_band, int line);
-  void short_wave_radiation_function(Reader tal_reader, MTL mtl, uint32 width_band, int line);
-  void large_wave_radiation_surface_function(uint32 width_band, int line);
-  void large_wave_radiation_atmosphere_function(uint32 width_band, double temperature, int line);
-  void net_radiation_function(uint32 width_band, int line);
-  void soil_heat_flux_function(uint32 width_band, int line);
+  void radiance_function(TIFF **bands_resampled, uint32_t width_band, uint16_t sample_bands, MTL mtl, Sensor sensor, int line);
+  void reflectance_function(TIFF **bands_resampled, uint32_t width_band, uint16_t sample_bands, MTL mtl, Sensor sensor, int line);
+  void albedo_function(Reader tal_reader, Sensor sensor, uint32_t width_band, int number_sensor, int line);
+  void ndvi_function(uint32_t width_band, int line);
+  void pai_function(uint32_t width_band, int line);
+  void lai_function(uint32_t width_band, int line);
+  void evi_function(uint32_t width_band, int line);
+  void enb_emissivity_function(uint32_t width_band, int line);
+  void eo_emissivity_function(uint32_t width_band, int line);
+  void ea_emissivity_function(Reader tal_reader, uint32_t width_band, int line);
+  void surface_temperature_function(int number_sensor, uint32_t width_band, int line);
+  void short_wave_radiation_function(Reader tal_reader, MTL mtl, uint32_t width_band, int line);
+  void large_wave_radiation_surface_function(uint32_t width_band, int line);
+  void large_wave_radiation_atmosphere_function(uint32_t width_band, double temperature, int line);
+  void net_radiation_function(uint32_t width_band, int line);
+  void soil_heat_flux_function(uint32_t width_band, int line);
 
   void d0_fuction(int line);
   void kb_function(double ndvi_max, double ndvi_min, int line);
@@ -75,8 +75,8 @@ struct Products
   void aerodynamic_resistance_fuction(vector<double> ustar_line, int width_band, vector<double> &aerodynamic_resistance_line);
   void aerodynamic_resistance_fuction(int line);
 
-  void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num);
-  void sensible_heat_function_default(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num);
+  void sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32_t height_band, uint32_t width_band, int threads_num);
+  void sensible_heat_function_default(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32_t height_band, uint32_t width_band, int threads_num);
 
   void latent_heat_flux_function(int width_band, int line);
   void net_radiation_24h_function(double Ra24h, double Rs24h, int width_band, int line);

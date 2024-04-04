@@ -30,8 +30,8 @@ void Landsat::process_products(MTL mtl, Sensor sensor, Station station)
   TIFF *tal = TIFFOpen(this->tal_path.c_str(), "rm");
   TIFFs_reader.check_open_tiff(tal);
 
-  uint16 sample_bands;
-  uint32 height_band, width_band;
+  uint16_t sample_bands;
+  uint32_t height_band, width_band;
   TIFFGetField(bands_resampled[1], TIFFTAG_IMAGELENGTH, &height_band);
   TIFFGetField(bands_resampled[1], TIFFTAG_IMAGEWIDTH, &width_band);
   TIFFGetField(bands_resampled[1], TIFFTAG_SAMPLEFORMAT, &sample_bands);

@@ -1,6 +1,6 @@
 #include "products.h"
 
-Products::Products(uint32 width_band, uint32 height_band)
+Products::Products(uint32_t width_band, uint32_t height_band)
 {
   this->width_band = width_band;
   this->height_band = height_band;
@@ -38,7 +38,7 @@ Products::Products(uint32 width_band, uint32 height_band)
   this->evapotranspiration_vector = vector<vector<double>>(height_band, vector<double>(width_band));
 };
 
-void Products::radiance_function(TIFF **bands_resampled, uint32 width_band, uint16 sample_bands, MTL mtl, Sensor sensor, int line)
+void Products::radiance_function(TIFF **bands_resampled, uint32_t width_band, uint16_t sample_bands, MTL mtl, Sensor sensor, int line)
 {
   int inital_index = (mtl.number_sensor == 8) ? 7 : 1;
 
@@ -71,7 +71,7 @@ void Products::radiance_function(TIFF **bands_resampled, uint32 width_band, uint
   }
 }
 
-void Products::reflectance_function(TIFF **bands_resampled, uint32 width_band, uint16 sample_bands, MTL mtl, Sensor sensor, int line)
+void Products::reflectance_function(TIFF **bands_resampled, uint32_t width_band, uint16_t sample_bands, MTL mtl, Sensor sensor, int line)
 {
   for (int i_band = 1; i_band < 8; i_band++)
   {
@@ -104,7 +104,7 @@ void Products::reflectance_function(TIFF **bands_resampled, uint32 width_band, u
   }
 }
 
-void Products::albedo_function(Reader tal_reader, Sensor sensor, uint32 width_band, int number_sensor, int line)
+void Products::albedo_function(Reader tal_reader, Sensor sensor, uint32_t width_band, int number_sensor, int line)
 {
   int final_tif_calc = number_sensor == 8 ? 6 : 7;
 
@@ -123,7 +123,7 @@ void Products::albedo_function(Reader tal_reader, Sensor sensor, uint32 width_ba
   }
 }
 
-void Products::ndvi_function(uint32 width_band, int line)
+void Products::ndvi_function(uint32_t width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
@@ -133,7 +133,7 @@ void Products::ndvi_function(uint32 width_band, int line)
   }
 };
 
-void Products::pai_function(uint32 width_band, int line)
+void Products::pai_function(uint32_t width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
@@ -146,7 +146,7 @@ void Products::pai_function(uint32 width_band, int line)
   }
 };
 
-void Products::lai_function(uint32 width_band, int line)
+void Products::lai_function(uint32_t width_band, int line)
 {
   double savi_line[width_band];
   double L = 0.05;
@@ -165,7 +165,7 @@ void Products::lai_function(uint32 width_band, int line)
   }
 };
 
-void Products::evi_function(uint32 width_band, int line)
+void Products::evi_function(uint32_t width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
@@ -174,7 +174,7 @@ void Products::evi_function(uint32 width_band, int line)
   }
 };
 
-void Products::enb_emissivity_function(uint32 width_band, int line)
+void Products::enb_emissivity_function(uint32_t width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
@@ -185,7 +185,7 @@ void Products::enb_emissivity_function(uint32 width_band, int line)
   }
 };
 
-void Products::eo_emissivity_function(uint32 width_band, int line)
+void Products::eo_emissivity_function(uint32_t width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
@@ -196,13 +196,13 @@ void Products::eo_emissivity_function(uint32 width_band, int line)
   }
 };
 
-void Products::ea_emissivity_function(Reader tal_reader, uint32 width_band, int line)
+void Products::ea_emissivity_function(Reader tal_reader, uint32_t width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
     this->ea_emissivity_vector[line][col] = 0.85 * pow((-1 * log(tal_reader.read_tiff_pixel(col))), 0.09);
 };
 
-void Products::surface_temperature_function(int number_sensor, uint32 width_band, int line)
+void Products::surface_temperature_function(int number_sensor, uint32_t width_band, int line)
 {
   double k1, k2;
 
@@ -234,7 +234,7 @@ void Products::surface_temperature_function(int number_sensor, uint32 width_band
     this->surface_temperature_vector[line][col] = k2 / (log((this->enb_emissivity_vector[line][col] * k1 / this->radiance_vector[line][col][radiance_number]) + 1));
 };
 
-void Products::short_wave_radiation_function(Reader tal_reader, MTL mtl, uint32 width_band, int line)
+void Products::short_wave_radiation_function(Reader tal_reader, MTL mtl, uint32_t width_band, int line)
 {
   double costheta = sin(mtl.sun_elevation * PI / 180);
 
@@ -245,7 +245,7 @@ void Products::short_wave_radiation_function(Reader tal_reader, MTL mtl, uint32 
   }
 };
 
-void Products::large_wave_radiation_surface_function(uint32 width_band, int line)
+void Products::large_wave_radiation_surface_function(uint32_t width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
@@ -255,7 +255,7 @@ void Products::large_wave_radiation_surface_function(uint32 width_band, int line
   }
 };
 
-void Products::large_wave_radiation_atmosphere_function(uint32 width_band, double temperature, int line)
+void Products::large_wave_radiation_atmosphere_function(uint32_t width_band, double temperature, int line)
 {
   double temperature_kelvin = temperature + 273.15;
   double temperature_kelvin_pow_4 = temperature_kelvin * temperature_kelvin * temperature_kelvin * temperature_kelvin;
@@ -264,7 +264,7 @@ void Products::large_wave_radiation_atmosphere_function(uint32 width_band, doubl
     this->large_wave_radiation_atmosphere_vector[line][col] = this->ea_emissivity_vector[line][col] * 5.67 * 1e-8 * temperature_kelvin_pow_4;
 };
 
-void Products::net_radiation_function(uint32 width_band, int line)
+void Products::net_radiation_function(uint32_t width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
@@ -277,7 +277,7 @@ void Products::net_radiation_function(uint32 width_band, int line)
   }
 };
 
-void Products::soil_heat_flux_function(uint32 width_band, int line)
+void Products::soil_heat_flux_function(uint32_t width_band, int line)
 {
   for (int col = 0; col < width_band; col++)
   {
@@ -428,7 +428,7 @@ void Products::aerodynamic_resistance_fuction(vector<double> ustar_line, int wid
     aerodynamic_resistance_line[col] = log(20) / (ustar_line[col] * VON_KARMAN);
 };
 
-void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32 height_band, uint32 width_band, int threads_num)
+void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32_t height_band, uint32_t width_band, int threads_num)
 {
   using namespace std::chrono;
   system_clock::time_point begin, end, begin_core, end_core;
