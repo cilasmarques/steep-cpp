@@ -81,11 +81,6 @@ int main(int argc, char *argv[])
   system_clock::time_point begin, end;
   int64_t initial_time, final_time, general_time;
   std::cout << "PHASE,TIMESTAMP,START_TIME,END_TIME" << std::endl;
-  std::cout << "14: " << argv[14] << std::endl;
-  std::cout << "15: " << argv[15] << std::endl;
-  std::cout << "16: " << argv[16] << std::endl;
-
-
   initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   begin = system_clock::now();
 

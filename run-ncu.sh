@@ -4,7 +4,7 @@ REPORTS_PATH=./nvidia
 OUTPUT_DATA_PATH=./output
 
 # Executa ./src/main e passa todos os argumentos para ele
-ncu --target-processes all --set full --csv --kernel-latency=true --kernel-parallel=true --kernel-usage=true --kernel-memory-usage=true -o ./$REPORTS_PATH/ncu ./src/main "$@" 2>&1 | grep '^P' > $OUTPUT_DATA_PATH/timestamp.csv &
+sudo ncu --target-processes all --set full -o ./$REPORTS_PATH/ncu ./src/main "$@" | grep '^P' > $OUTPUT_DATA_PATH/timestamp.csv &
 
 PID=$!
 

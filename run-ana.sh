@@ -6,7 +6,7 @@ ANALYSIS_OUTPUT_PATH=./analysis
 OUTPUT_DATA_PATH=./output
 
 for i in $(seq -f "%02g" 1 3); do
-  ./src/main "$@" 2>&1 | grep '^P' > $OUTPUT_DATA_PATH/timestamp.csv &
+  ./src/main "$@" | grep '^P' > $OUTPUT_DATA_PATH/timestamp.csv &
 
   PID=$!
 

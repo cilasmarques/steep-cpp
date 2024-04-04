@@ -26,22 +26,10 @@ OUTPUT_DATA_PATH=./output
 LANDCOVER_DATA_FILE=./_empty_landcover.txt
 INPUT_DATA_PATH=$(IMAGES_OUTPUT)/$(IMAGE_LANDSAT)_$(IMAGE_PATHROW)_$(IMAGE_DATE)/final_results
 
-# init:
-#   NSYS_PACKAGE_URL=https://developer.nvidia.com/downloads/assets/tools/secure/nsight-systems/2024_2/nsightsystems-linux-public-2024.2.1.106-3403790.run
-# 	sudo apt-get install nvidia-cuda-toolkit
-# 	sudo add-apt-repository ppa:ubuntugis/ppa && sudo apt-get update 
-# 	sudo apt-get install gdal-bin
-# 	sudo apt-get install libtiff5-dev
-#		wget $(NSYS_PACKAGE_URL)
-#		chmod +x nsightsystems-linux-public-2024.2.1.106-3403790.run
-#		./nsightsystems-linux-public-2024.2.1.106-3403790.run
-#		rm nsightsystems-linux-public-2024.2.1.106-3403790.run
-
 clean-all:
 	rm -rf ./src/main
 	rm -rf ./analysis/*
 	rm -rf ./nvidia/*
-	rm -rf $(IMAGES_OUTPUT)/*
 	rm -rf $(OUTPUT_DATA_PATH)/*
 
 clean-analysis:
@@ -109,11 +97,11 @@ ncu-landsat5-7:
 
 ncu-landsat8:
 	./run-ncu.sh \
-		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
-		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
+		$(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF $(INPUT_DATA_PATH)/B4.TIF \
+		$(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF $(INPUT_DATA_PATH)/B.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
 		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
-		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) -blocks=$(BLOCKS) &
+		-meth=$(METHOD) -nan=-3.39999995214436425e+38 -threads=$(THREADS) -blocks=$(BLOCKS) & 
 
 analisys-landsat8:
 	./run-ana.sh \
