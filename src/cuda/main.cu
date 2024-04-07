@@ -101,10 +101,11 @@ int main(int argc, char *argv[])
 
   // =====  END + OUTPUTS =====
 
-  string outPath = OUTPUT_FOLDER + "/metadata.txt";
+  string outPath = std::string(argv[OUTPUT_FOLDER]) + "/metadata.txt";
   std::ofstream outputThreads(outPath);
   std::streambuf* coutThreads = std::cout.rdbuf();
   std::cout.rdbuf(outputThreads.rdbuf());
+  std::cout << outPath << std::endl;
   std::cout << "informed threads: " << threads_num << std::endl;
   std::cout << "informed blocks: " << blocks_num << std::endl;
 
@@ -122,46 +123,6 @@ int main(int argc, char *argv[])
       std::cout << "Device " << device << " has " << deviceProp.maxThreadsPerMultiProcessor << " max threads per SM" << std::endl;
       std::cout << "Device " << device << " has " << deviceProp.maxGridSize << " max grid size" << std::endl;
   }
-
-  // std::ofstream outputProds("./output/products.txt");
-  // std::streambuf* coutProds = std::cout.rdbuf();
-  // std::cout.rdbuf(outputProds.rdbuf());
-
-  // std::cout << " ==== albedo" << std::endl;
-  // printVector2x2(products.albedo_vector);
-
-  // std::cout << " ==== ndvi" << std::endl;
-  // printVector2x2(products.ndvi_vector);
-
-  // std::cout << " ==== net_radiation" << std::endl;
-  // printVector2x2(products.net_radiation_vector);
-
-  // std::cout << " ==== soil_heat" << std::endl;
-  // printVector2x2(products.soil_heat_vector);
-
-  // std::cout << " ==== sensible_heat_flux" << std::endl;
-  // printVector2x2(products.sensible_heat_flux_vector);
-
-  // std::cout << " ==== latent_heat_flux" << std::endl;
-  // printVector2x2(products.latent_heat_flux_vector);
-
-  // std::cout << " ==== net_radiation_24h" << std::endl;
-  // printVector2x2(products.net_radiation_24h_vector);
-
-  // std::cout << " ==== evapotranspiration_fraction" << std::endl;
-  // printVector2x2(products.evapotranspiration_fraction_vector);
-
-  // std::cout << " ==== sensible_heat_flux_24h" << std::endl;
-  // printVector2x2(products.sensible_heat_flux_24h_vector);
-
-  // std::cout << " ==== latent_heat_flux_24h" << std::endl;
-  // printVector2x2(products.latent_heat_flux_24h_vector);
-
-  // std::cout << " ==== evapotranspiration_24h" << std::endl;
-  // printVector2x2(products.evapotranspiration_24h_vector);
-
-  // std::cout << " ==== evapotranspiration" << std::endl;
-  // printVector2x2(products.evapotranspiration_vector);
 
   return 0;
 }
