@@ -1,6 +1,9 @@
 #io data
-input_data/
-output/
+nvidia/*
+output/*
+scenes/*
+analysis/*
+dev*
 
 # Prerequisites
 *.d
