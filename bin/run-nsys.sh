@@ -7,7 +7,7 @@ cd -P -- "$parent_dir"
 OUTPUT_DATA_PATH=./output
 
 # Executa ./src/main e passa todos os argumentos para ele
-sudo ncu --target-processes all --set full -o ./$OUTPUT_DATA_PATH/ncu ./src/main "$@" &
+nsys profile -o ./$OUTPUT_DATA_PATH/nsys ./src/main "$@" &
 
 PID=$!
 

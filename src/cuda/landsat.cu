@@ -48,7 +48,7 @@ string Landsat::select_endmembers(int method)
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
-  return "P2 - PIXEL SELECTION," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time);
+  return "P2 - PIXEL SELECTION," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time) + "\n";
 }
 
 string Landsat::converge_rah_cycle(Station station, int method, int threads_num, int blocks_num)
@@ -90,7 +90,7 @@ string Landsat::converge_rah_cycle(Station station, int method, int threads_num,
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  return "P2 - RAH CYCLE," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time);
+  return "P2 - RAH CYCLE," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time) + "\n";
 };
 
 
@@ -140,7 +140,7 @@ string Landsat::compute_Rn_G(Sensor sensor, Station station)
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  return "P1 - Rn_G," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time);
+  return "P1 - Rn_G," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time) + "\n";
 }
 
 string Landsat::compute_H_ET(Station station)
@@ -178,10 +178,10 @@ string Landsat::compute_H_ET(Station station)
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  return "P2 - FINAL PRODUCTS," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time);
+  return "P2 - FINAL PRODUCTS," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time) + "\n";
 };
 
-void Landsat::save_products()
+void Landsat::save_products(string output_path)
 {
   system_clock::time_point begin, end;
   int64_t general_time, initial_time, final_time;
@@ -189,7 +189,7 @@ void Landsat::save_products()
   begin = system_clock::now();
   initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
-  std::ofstream outputProds("../output/products.txt");
+  std::ofstream outputProds(output_path);
   std::streambuf *coutProds = std::cout.rdbuf();
   std::cout.rdbuf(outputProds.rdbuf());
 

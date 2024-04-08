@@ -1,21 +1,24 @@
 #!/bin/bash
 
-cd -P -- "$(dirname -- "$0")"
+current_dir=$(dirname -- "$0")
+parent_dir=$(dirname -- "$current_dir")
+cd -P -- "$parent_dir"
 
-ANALYSIS_OUTPUT_PATH=./analysis
 OUTPUT_DATA_PATH=./output
+ANALYSIS_OUTPUT_PATH=$OUTPUT_DATA_PATH/analysis
+mkdir -p $ANALYSIS_OUTPUT_PATH
 
 for i in $(seq -f "%02g" 1 3); do
-  ./src/main "$@" | grep '^P' > $OUTPUT_DATA_PATH/timestamp.csv &
+  ./src/main "$@" &
 
   PID=$!
 
   # Inicia os scripts de monitoramento em background
-  sh scripts/collect-cpu-usage.sh $PID > $OUTPUT_DATA_PATH/cpu.csv &
-  sh scripts/collect-memory-usage.sh $PID > $OUTPUT_DATA_PATH/mem.csv &
-  sh scripts/collect-disk-usage.sh $PID > $OUTPUT_DATA_PATH/disk.csv &
-  sh scripts/collect-gpu-usage.sh $PID > $OUTPUT_DATA_PATH/gpu.csv &
-  sh scripts/collect-gpu-memory-usage.sh $PID > $OUTPUT_DATA_PATH/mem-gpu.csv &
+  sh ./scripts/collect-cpu-usage.sh $PID > $OUTPUT_DATA_PATH/cpu.csv &
+  sh ./scripts/collect-memory-usage.sh $PID > $OUTPUT_DATA_PATH/mem.csv &
+  sh ./scripts/collect-disk-usage.sh $PID > $OUTPUT_DATA_PATH/disk.csv &
+  sh ./scripts/collect-gpu-usage.sh $PID > $OUTPUT_DATA_PATH/gpu.csv &
+  sh ./scripts/collect-gpu-memory-usage.sh $PID > $OUTPUT_DATA_PATH/mem-gpu.csv &
 
   # Aguarda o ./src/main terminar
   wait $PID
@@ -31,7 +34,6 @@ for i in $(seq -f "%02g" 1 3); do
   mkdir -p $ANALYSIS_OUTPUT_PATH/experiment${i}
   mv $OUTPUT_DATA_PATH/*.csv $ANALYSIS_OUTPUT_PATH/experiment${i}
   mv $OUTPUT_DATA_PATH/*.txt $ANALYSIS_OUTPUT_PATH/experiment${i}
-  rm -rf $OUTPUT_DATA_PATH/*
 
   sleep 1
 done

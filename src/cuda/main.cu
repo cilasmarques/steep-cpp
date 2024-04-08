@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
   string land_cover_path = argv[INPUT_LAND_COVER_INDEX];
 
   // load bands path
-  string bands_paths[INPUT_BAND_TAL_INDEX];
+  string bands_paths[INPUT_BAND_TAL_INDEX + 1];
   for (int i = 1; i <= INPUT_BAND_TAL_INDEX; i++) {
     bands_paths[i] = argv[i];
   }
@@ -79,6 +79,7 @@ int main(int argc, char *argv[])
   string output_folder = argv[OUTPUT_FOLDER];
   string output_time = output_folder + "/time.csv";  
   string output_metadata = output_folder + "/metadata.txt";
+  string output_products = output_folder + "/products.txt";
 
   // =====  START + TIME OUTPUT =====
   MTL mtl = MTL(path_meta_file);
@@ -105,8 +106,9 @@ int main(int argc, char *argv[])
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   general_time = duration_cast<milliseconds>(end.time_since_epoch() - begin.time_since_epoch()).count();
   time_output << "TOTAL," << general_time << "," << initial_time << "," << final_time << std::endl;
-
   time_output.close();
+
+  landsat.save_products(output_products);
   landsat.close();
 
   // =====  END + METADATA OUTPUT =====

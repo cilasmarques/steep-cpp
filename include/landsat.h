@@ -41,7 +41,7 @@ struct Landsat
 
   string compute_H_ET(Station station);
 
-  void save_products();
+  void save_products(string output_path);
 
   void close();
 };

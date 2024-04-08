@@ -1,19 +1,22 @@
 #!/bin/bash
 
-REPORTS_PATH=./nvidia
+current_dir=$(dirname -- "$0")
+parent_dir=$(dirname -- "$current_dir")
+cd -P -- "$parent_dir"
+
 OUTPUT_DATA_PATH=./output
 
 # Executa ./src/main e passa todos os argumentos para ele
-nsys profile -o ./$REPORTS_PATH/nsys ./src/main "$@" | grep '^P' > $OUTPUT_DATA_PATH/timestamp.csv &
+./src/main "$@" &
 
 PID=$!
 
 # Inicia os scripts de monitoramento em background
-sh scripts/collect-cpu-usage.sh $PID > $OUTPUT_DATA_PATH/cpu.csv &
-sh scripts/collect-memory-usage.sh $PID > $OUTPUT_DATA_PATH/mem.csv &
-sh scripts/collect-disk-usage.sh $PID > $OUTPUT_DATA_PATH/disk.csv &
-sh scripts/collect-gpu-usage.sh $PID > $OUTPUT_DATA_PATH/gpu.csv &
-sh scripts/collect-gpu-memory-usage.sh $PID > $OUTPUT_DATA_PATH/mem-gpu.csv &
+sh ./scripts/collect-cpu-usage.sh $PID > $OUTPUT_DATA_PATH/cpu.csv &
+sh ./scripts/collect-memory-usage.sh $PID > $OUTPUT_DATA_PATH/mem.csv &
+sh ./scripts/collect-disk-usage.sh $PID > $OUTPUT_DATA_PATH/disk.csv &
+sh ./scripts/collect-gpu-usage.sh $PID > $OUTPUT_DATA_PATH/gpu.csv &
+sh ./scripts/collect-gpu-memory-usage.sh $PID > $OUTPUT_DATA_PATH/mem-gpu.csv &
 
 # Aguarda o ./src/main terminar
 wait $PID

@@ -26,29 +26,26 @@ OUTPUT_DATA_PATH=./output
 LANDCOVER_DATA_FILE=./_empty_landcover.txt
 INPUT_DATA_PATH=$(IMAGES_DIR)/$(IMAGE_LANDSAT)_$(IMAGE_PATHROW)_$(IMAGE_DATE)/final_results
 
+clean:
+	rm $(OUTPUT_DATA_PATH)/*
+
 clean-all:
-	rm -rf ./src/main
-	rm -rf ./analysis/*
-	rm -rf ./nvidia/*
 	rm -rf $(OUTPUT_DATA_PATH)/*
 
-clean-analysis:
-	rm -rf ./analysis/*
-
 clean-nvidia:
-	rm -rf ./nvidia/*
+	rm -rf $(OUTPUT_DATA_PATH)/nvidia/*
+
+clean-analysis:
+	rm -rf $(OUTPUT_DATA_PATH)/analysis/*
 
 clean-images:
 	rm -rf $(IMAGES_DIR)/*
 
-clean-output:
-	rm -rf $(OUTPUT_DATA_PATH)/*
-
 build-cpp:
-	$(GCC) -g ./src/cpp/*.cpp -o ./src/main $(CXXFLAGS)
+	$(GCC) -I./include -g ./src/cpp/*.cpp -o ./src/main $(CXXFLAGS)
 
 build-nvcc:
-	$(NVCC) -g ./src/cuda/*.cu -o ./src/main $(CXXFLAGS)
+	$(NVCC) -I./include -g ./src/cuda/*.cu -o ./src/main $(CXXFLAGS)
 
 fix-permissions:
 	sudo chmod -R 777 $(INPUT_DATA_PATH)/*
@@ -81,6 +78,22 @@ exec-landsat8:
 
 exec-landsat5-7:
 	./bin/run-exp.sh \
+		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
+		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
+		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
+		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
+		-meth=$(METHOD) -threads=$(THREADS) -blocks=$(BLOCKS) &
+
+nsys-landsat8:
+	./bin/run-nsys.sh \
+		$(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF $(INPUT_DATA_PATH)/B4.TIF \
+		$(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF $(INPUT_DATA_PATH)/B.TIF \
+		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
+		$(INPUT_DATA_PATH)/station.csv $(LANDCOVER_DATA_FILE) $(OUTPUT_DATA_PATH) \
+		-meth=$(METHOD) -threads=$(THREADS) -blocks=$(BLOCKS) & 
+
+nsys-landsat5-7:
+	./bin/run-nsys.sh \
 		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
 		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
