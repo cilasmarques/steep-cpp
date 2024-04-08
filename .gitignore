@@ -1,7 +1,7 @@
 #io data
 nvidia/*
 output/*
-scenes/*
+input/*
 analysis/*
 dev*
 

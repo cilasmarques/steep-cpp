@@ -7,12 +7,11 @@
  */
 struct Candidate
 {
-  double ndvi, temperature, ustar;
-  double net_radiation, soil_heat_flux, ho, zom;
   int line, col;
   int negative_neighbour;
   double coefficient_variation;
-
+  double ndvi, temperature, ustar;
+  double net_radiation, soil_heat_flux, ho, zom;
   vector<double> aerodynamic_resistance;
 
   /**
@@ -20,6 +19,10 @@ struct Candidate
    */
   Candidate();
 
+  /**
+   * @brief  Copy constructor.
+   * @param  c: Candidate to be copied.
+  */
   Candidate(const Candidate &c);
 
   /**
@@ -49,6 +52,10 @@ struct Candidate
   void toString();
 };
 
+/**
+ * @brief  Compares two Candidates based upon their position.
+ * @param  a: First candidate.
+*/
 bool equals(Candidate a, Candidate b);
 
 /**
@@ -59,8 +66,12 @@ bool equals(Candidate a, Candidate b);
  */
 bool compare_candidate_temperature(Candidate a, Candidate b);
 
-bool compare_candidate_cold(Candidate a, Candidate b);
-
+/**
+ * @brief  Compares two Candidates based upon their NDVI.
+ * @param  a: First candidate.
+ * @param  b: Second candidate.
+ * @retval TRUE if second candidate is greater than first one, and FALSE otherwise.
+ */
 bool compare_candidate_ndvi(Candidate a, Candidate b);
 
 /**

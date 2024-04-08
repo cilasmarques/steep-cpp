@@ -34,3 +34,10 @@ bool definitelyGreaterThan(double a, double b);
  * @retval TRUE if a is definitely less than b, and FALSE otherwise.
  */
 bool definitelyLessThan(double a, double b);
+
+/**
+ * @brief  Prints a 2x2 matrix.
+ * 
+ * @param  matrix: Matrix to be printed.
+ */
+void printVector2x2(const vector<vector<double>> &matrix);

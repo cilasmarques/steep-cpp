@@ -1,8 +1,5 @@
 #include "reader.h"
 
-/**
- * @brief  Empty constructor.
- */
 Reader::Reader()
 {
   sampleFormat = 0;
@@ -10,12 +7,6 @@ Reader::Reader()
   buffer = NULL;
 };
 
-/**
- * @brief  Constructor
- * @param  _sampleFormat: Sample format.
- * @param  _byteSize: Byte size.
- * @param  _buffer: Buffer.
- */
 Reader::Reader(uint16_t _sampleFormat, uint8_t _byteSize, tdata_t _buffer)
 {
   sampleFormat = _sampleFormat;
@@ -23,11 +14,6 @@ Reader::Reader(uint16_t _sampleFormat, uint8_t _byteSize, tdata_t _buffer)
   buffer = _buffer;
 };
 
-/**
- * @brief  Read the value of pixel in a TIFF.
- * @param  column: Number of column of the pixel.
- * @retval Value of the pixel.
- */
 double Reader::read_tiff_pixel(uint32_t column)
 {
   double ret = 0;
@@ -36,14 +22,14 @@ double Reader::read_tiff_pixel(uint32_t column)
   case 1:
   {
     uint64_t value = 0;
-    memcpy(&value, static_cast<unsigned char*>(buffer) + (column * byteSize), byteSize);
+    memcpy(&value, static_cast<unsigned char *>(buffer) + (column * byteSize), byteSize);
     ret = value;
   }
   break;
   case 2:
   {
     int64_t value = 0;
-    memcpy(&value, static_cast<unsigned char*>(buffer) + (column * byteSize), byteSize);
+    memcpy(&value, static_cast<unsigned char *>(buffer) + (column * byteSize), byteSize);
     ret = value;
   }
   break;
@@ -53,21 +39,21 @@ double Reader::read_tiff_pixel(uint32_t column)
     case 4:
     {
       float value = 0;
-      memcpy(&value, static_cast<unsigned char*>(buffer) + (column * byteSize), byteSize);
+      memcpy(&value, static_cast<unsigned char *>(buffer) + (column * byteSize), byteSize);
       ret = value;
     }
     break;
     case 8:
     {
       double value = 0;
-      memcpy(&value, static_cast<unsigned char*>(buffer) + (column * byteSize), byteSize);
+      memcpy(&value, static_cast<unsigned char *>(buffer) + (column * byteSize), byteSize);
       ret = value;
     }
     break;
     case 16:
     {
       long double value = 0;
-      memcpy(&value, static_cast<unsigned char*>(buffer) + (column * byteSize), byteSize);
+      memcpy(&value, static_cast<unsigned char *>(buffer) + (column * byteSize), byteSize);
       ret = value;
     }
     break;

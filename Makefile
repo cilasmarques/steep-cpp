@@ -5,7 +5,7 @@ CXXFLAGS=-std=c++14 -ltiff
 
 ## ==== Download and preprocessing
 DOCKER_OUTPUT_PATH=/home/saps/output
-IMAGES_OUTPUT=./scenes
+IMAGES_DIR=./input
 
 ## Note: The following variables are used to run the docker containers and are not used in the Makefile itself
 #  		 	 The container only retrieves images from between 1984 and 2017. Furthermore, not every day has  
@@ -24,7 +24,7 @@ THREADS=1
 BLOCKS=82
 OUTPUT_DATA_PATH=./output
 LANDCOVER_DATA_FILE=./_empty_landcover.txt
-INPUT_DATA_PATH=$(IMAGES_OUTPUT)/$(IMAGE_LANDSAT)_$(IMAGE_PATHROW)_$(IMAGE_DATE)/final_results
+INPUT_DATA_PATH=$(IMAGES_DIR)/$(IMAGE_LANDSAT)_$(IMAGE_PATHROW)_$(IMAGE_DATE)/final_results
 
 clean-all:
 	rm -rf ./src/main
@@ -38,8 +38,8 @@ clean-analysis:
 clean-nvidia:
 	rm -rf ./nvidia/*
 
-clean-scenes:
-	rm -rf $(IMAGES_OUTPUT)/*
+clean-images:
+	rm -rf $(IMAGES_DIR)/*
 
 clean-output:
 	rm -rf $(OUTPUT_DATA_PATH)/*
@@ -55,7 +55,7 @@ fix-permissions:
 
 docker-landsat-download:
 	docker run \
-		-v $(IMAGES_OUTPUT):$(DOCKER_OUTPUT_PATH) \
+		-v $(IMAGES_DIR):$(DOCKER_OUTPUT_PATH) \
 		-e OUTPUT_PATH=$(DOCKER_OUTPUT_PATH) \
 		-e LANDSAT=$(IMAGE_LANDSAT) \
 		-e PATHROW=$(IMAGE_PATHROW) \
@@ -64,7 +64,7 @@ docker-landsat-download:
 
 docker-landsat-preprocess:
 	docker run \
-		-v $(IMAGES_OUTPUT):$(DOCKER_OUTPUT_PATH) \
+		-v $(IMAGES_DIR):$(DOCKER_OUTPUT_PATH) \
 		-e OUTPUT_PATH=$(DOCKER_OUTPUT_PATH) \
 		-e LANDSAT=$(IMAGE_LANDSAT) \
 		-e PATHROW=$(IMAGE_PATHROW) \
@@ -72,7 +72,7 @@ docker-landsat-preprocess:
 		cilasmarques/landsat-preprocess:latest
 
 exec-landsat8:
-	./run-exp.sh \
+	./bin/run-exp.sh \
 		$(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF $(INPUT_DATA_PATH)/B4.TIF \
 		$(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF $(INPUT_DATA_PATH)/B.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
@@ -80,7 +80,7 @@ exec-landsat8:
 		-meth=$(METHOD) -threads=$(THREADS) -blocks=$(BLOCKS) & 
 
 exec-landsat5-7:
-	./run-exp.sh \
+	./bin/run-exp.sh \
 		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
 		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
@@ -88,7 +88,7 @@ exec-landsat5-7:
 		-meth=$(METHOD) -threads=$(THREADS) -blocks=$(BLOCKS) &
 
 ncu-landsat5-7:
-	./run-ncu.sh \
+	./bin/run-ncu.sh \
 		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
 		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
@@ -96,7 +96,7 @@ ncu-landsat5-7:
 		-meth=$(METHOD) -threads=$(THREADS) -blocks=$(BLOCKS) &
 
 ncu-landsat8:
-	./run-ncu.sh \
+	./bin/run-ncu.sh \
 		$(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF $(INPUT_DATA_PATH)/B4.TIF \
 		$(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF $(INPUT_DATA_PATH)/B.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
@@ -104,7 +104,7 @@ ncu-landsat8:
 		-meth=$(METHOD) -threads=$(THREADS) -blocks=$(BLOCKS) & 
 
 analisys-landsat8:
-	./run-ana.sh \
+	./bin/run-ana.sh \
 		$(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF $(INPUT_DATA_PATH)/B4.TIF \
 		$(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF $(INPUT_DATA_PATH)/B.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
@@ -112,7 +112,7 @@ analisys-landsat8:
 		-meth=$(METHOD) -threads=$(THREADS) -blocks=$(BLOCKS) &
 
 analisys-landsat5-7:
-	./run-ana.sh \
+	./bin/run-ana.sh \
 		$(INPUT_DATA_PATH)/B1.TIF $(INPUT_DATA_PATH)/B2.TIF $(INPUT_DATA_PATH)/B3.TIF \
 		$(INPUT_DATA_PATH)/B4.TIF $(INPUT_DATA_PATH)/B5.TIF $(INPUT_DATA_PATH)/B6.TIF \
 		$(INPUT_DATA_PATH)/B7.TIF $(INPUT_DATA_PATH)/elevation.tif $(INPUT_DATA_PATH)/MTL.txt \
