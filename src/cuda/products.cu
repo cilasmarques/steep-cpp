@@ -508,8 +508,11 @@ void Products::evapotranspiration_function(int width_band, int line)
     this->evapotranspiration_vector[line][col] = this->net_radiation_24h_vector[line][col] * this->evapotranspiration_fraction_vector[line][col] * 0.035;
 };
 
-void Products::rah_correction_function(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel)
+string Products::rah_correction_function(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel)
 {
+  system_clock::time_point begin_core, end_core;
+  int64_t general_time_core, initial_time_core, final_time_core;
+
   // ========= CUDA Setup
   int dev = 0;
   cudaDeviceProp deviceProp;
@@ -521,8 +524,8 @@ void Products::rah_correction_function(double ndvi_min, double ndvi_max, Candida
   int num_threads = deviceProp.maxThreadsPerMultiProcessor * num_blocks;
 
   dim3 blockSize(1, 1024);
-  dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, (height_band + blockSize.y - 1) / blockSize.y);
-  // dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, blocks_num);
+  dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, num_sms);
+  // dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, (height_band + blockSize.y - 1) / blockSize.y);
 
   double hot_pixel_aerodynamic = aerodynamic_resistance_pointer[hot_pixel.line * width_band + hot_pixel.col];
   hot_pixel.aerodynamic_resistance.push_back(hot_pixel_aerodynamic);
@@ -569,10 +572,19 @@ void Products::rah_correction_function(double ndvi_min, double ndvi_max, Candida
     HANDLE_ERROR(cudaMemcpy(devRahR, aerodynamic_resistance_pointer, nBytes_band, cudaMemcpyHostToDevice));
     HANDLE_ERROR(cudaMemcpy(devH, sensible_heat_flux_pointer, nBytes_band, cudaMemcpyHostToDevice));
 
-    // rah_correction_cycle_STEEP<<<gridSize, blockSize>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
-    rah_correction_cycle_STEEP<<<num_threads, num_blocks>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
+    // ==== Paralelization core
+    begin_core = system_clock::now();
+    initial_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
+    rah_correction_cycle_STEEP<<<gridSize, blockSize>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
+    // rah_correction_cycle_STEEP<<<num_threads, num_blocks>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
+
+    end_core = system_clock::now();
+    general_time_core = duration_cast<milliseconds>(end_core - begin_core).count();
+    final_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    // ==== 
 
     HANDLE_ERROR(cudaMemcpy(ustar_pointer, devUstarW, nBytes_band, cudaMemcpyDeviceToHost));
     HANDLE_ERROR(cudaMemcpy(aerodynamic_resistance_pointer, devRahW, nBytes_band, cudaMemcpyDeviceToHost));
@@ -594,4 +606,6 @@ void Products::rah_correction_function(double ndvi_min, double ndvi_max, Candida
   HANDLE_ERROR(cudaFree(devRahR));
   HANDLE_ERROR(cudaFree(devRahW));
   HANDLE_ERROR(cudaDeviceReset());
+
+  return "P2 - RAH - PARALLEL - CORE, " + to_string(general_time_core) + ", " + to_string(initial_time_core) + ", " + to_string(final_time_core) + "\n";
 }

@@ -53,6 +53,7 @@ string Landsat::select_endmembers(int method)
 
 string Landsat::converge_rah_cycle(Station station, int method, int threads_num, int blocks_num)
 {
+  string result = "";
   system_clock::time_point begin, end;
   int64_t general_time, initial_time, final_time;
 
@@ -85,12 +86,14 @@ string Landsat::converge_rah_cycle(Station station, int method, int threads_num,
     products.aerodynamic_resistance_fuction(line);
   }
 
-  products.rah_correction_function(ndvi_min, ndvi_max, hot_pixel, cold_pixel);
+  result += products.rah_correction_function(ndvi_min, ndvi_max, hot_pixel, cold_pixel);
 
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  return "P2 - RAH CYCLE," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time) + "\n";
+
+  result += "P2 - RAH CYCLE," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time) + "\n";
+  return result;
 };
 
 

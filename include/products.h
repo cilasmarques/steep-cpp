@@ -323,5 +323,5 @@ struct Products
    * @param  width_band: Band width.
    * @param  line: Line to be computed.
    */
-  void rah_correction_function(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel);
+  string rah_correction_function(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel);
 };
