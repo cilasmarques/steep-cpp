@@ -1,9 +1,13 @@
 #include "products.h"
+#include "kernels.h"
+
+Products::Products() {}
 
 Products::Products(uint32_t width_band, uint32_t height_band)
 {
   this->width_band = width_band;
   this->height_band = height_band;
+  this->nBytes_band = height_band * width_band * sizeof(double);
 
   this->radiance_vector = vector<vector<vector<double>>>(height_band, vector<vector<double>>(width_band, vector<double>(8)));
   this->reflectance_vector = vector<vector<vector<double>>>(height_band, vector<vector<double>>(width_band, vector<double>(8)));
@@ -21,14 +25,17 @@ Products::Products(uint32_t width_band, uint32_t height_band)
   this->short_wave_radiation_vector = vector<vector<double>>(height_band, vector<double>(width_band));
   this->large_wave_radiation_surface_vector = vector<vector<double>>(height_band, vector<double>(width_band));
   this->large_wave_radiation_atmosphere_vector = vector<vector<double>>(height_band, vector<double>(width_band));
-  this->d0_vector = vector<vector<double>>(height_band, vector<double>(width_band));
-  this->zom_vector = vector<vector<double>>(height_band, vector<double>(width_band));
-  this->ustar_vector = vector<vector<double>>(height_band, vector<double>(width_band));
-  this->kb1_vector = vector<vector<double>>(height_band, vector<double>(width_band));
-  this->aerodynamic_resistance_vector = vector<vector<double>>(height_band, vector<double>(width_band));
+
+  // ==== GPU
+  this->surface_temperature_pointer = (double *)malloc(nBytes_band);
+  this->d0_pointer = (double *)malloc(nBytes_band);
+  this->zom_pointer = (double *)malloc(nBytes_band);
+  this->ustar_pointer = (double *)malloc(nBytes_band);
+  this->kb1_pointer = (double *)malloc(nBytes_band);
+  this->aerodynamic_resistance_pointer = (double *)malloc(nBytes_band);
+  this->sensible_heat_flux_pointer = (double *)malloc(nBytes_band);
+
   this->sensible_heat_flux_vector = vector<vector<double>>(height_band, vector<double>(width_band));
-  this->ustar_previous = vector<vector<double>>(height_band, vector<double>(width_band));
-  this->aerodynamic_resistance_previous = vector<vector<double>>(height_band, vector<double>(width_band));
   this->latent_heat_flux_vector = vector<vector<double>>(height_band, vector<double>(width_band));
   this->net_radiation_24h_vector = vector<vector<double>>(height_band, vector<double>(width_band));
   this->evapotranspiration_fraction_vector = vector<vector<double>>(height_band, vector<double>(width_band));
@@ -231,7 +238,11 @@ void Products::surface_temperature_function(int number_sensor, uint32_t width_ba
   int radiance_number = (number_sensor == 5) ? 6 : 7;
 
   for (int col = 0; col < width_band; col++)
-    this->surface_temperature_vector[line][col] = k2 / (log((this->enb_emissivity_vector[line][col] * k1 / this->radiance_vector[line][col][radiance_number]) + 1));
+  {
+    double surface_temperature_vector = k2 / (log((this->enb_emissivity_vector[line][col] * k1 / this->radiance_vector[line][col][radiance_number]) + 1));
+    this->surface_temperature_pointer[line * width_band + col] = surface_temperature_vector;
+    this->surface_temperature_vector[line][col] = surface_temperature_vector;
+  }
 };
 
 void Products::short_wave_radiation_function(Reader tal_reader, MTL mtl, uint32_t width_band, int line)
@@ -312,7 +323,8 @@ void Products::d0_fuction(int line)
       DISP = 0;
     }
 
-    this->d0_vector[line][col] = DISP;
+    int pos = line * width_band + col;
+    this->d0_pointer[pos] = DISP;
   }
 };
 
@@ -333,8 +345,10 @@ void Products::kb_function(double ndvi_max, double ndvi_min, int line)
 
   for (int col = 0; col < width_band; col++)
   {
-    double zom = this->zom_vector[line][col];
-    double u_ast_ini_terra = this->ustar_vector[line][col];
+    int pos = line * width_band + col;
+
+    double zom = this->zom_pointer[pos];
+    double u_ast_ini_terra = this->ustar_pointer[pos];
     double PAI = this->pai_vector[line][col];
 
     double Re_star = (u_ast_ini_terra * 0.009) / visc;
@@ -353,10 +367,10 @@ void Products::kb_function(double ndvi_max, double ndvi_min, int line)
 
     double SF = sf_c + (1 / (1 + pow(exp(1.0), (sf_d - (sf_e * soil_moisture_day_rel)))));
 
-    this->kb1_vector[line][col] = ((kb1_fst_part * pow(fc, 2)) +
-                                   (kb1_sec_part * pow(fc, 2) * pow(fs, 2)) +
-                                   (pow(fs, 2) * kb1s)) *
-                                  SF;
+    this->kb1_pointer[pos] = ((kb1_fst_part * pow(fc, 2)) +
+                              (kb1_sec_part * pow(fc, 2) * pow(fs, 2)) +
+                              (pow(fs, 2) * kb1s)) *
+                             SF;
   }
 };
 
@@ -375,7 +389,8 @@ void Products::zom_fuction(double A_ZOM, double B_ZOM, int line)
     if (gama < 3.3)
       gama = 3.3;
 
-    this->zom_vector[line][col] = (HGHT - this->d0_vector[line][col]) * pow(exp(1.0), (-VON_KARMAN * gama) + PSICORR);
+    int pos = line * width_band + col;
+    this->zom_pointer[pos] = (HGHT - this->d0_pointer[pos]) * pow(exp(1.0), (-VON_KARMAN * gama) + PSICORR);
   }
 };
 
@@ -391,9 +406,10 @@ void Products::ustar_fuction(double u10, int line)
 
   for (int col = 0; col < width_band; col++)
   {
-    double DISP = this->d0_vector[line][col];
-    double zom = this->zom_vector[line][col];
-    this->ustar_vector[line][col] = (u10 * VON_KARMAN) / std::log((zu - DISP) / zom);
+    int pos = line * width_band + col;
+    double DISP = this->d0_pointer[pos];
+    double zom = this->zom_pointer[pos];
+    this->ustar_pointer[pos] = (u10 * VON_KARMAN) / std::log((zu - DISP) / zom);
   }
 };
 
@@ -409,16 +425,17 @@ void Products::aerodynamic_resistance_fuction(int line)
 
   for (int col = 0; col < width_band; col++)
   {
-    double DISP = this->d0_vector[line][col];
-    double zom = this->zom_vector[line][col];
-    double zoh_terra = zom / pow(exp(1.0), (this->kb1_vector[line][col]));
+    int pos = line * width_band + col;
+    double DISP = this->d0_pointer[pos];
+    double zom = this->zom_pointer[pos];
+    double zoh_terra = zom / pow(exp(1.0), (this->kb1_pointer[pos]));
 
     double temp_kb_1_terra = log(zom / zoh_terra);
-    double temp_rah1_terra = (1 / (this->ustar_vector[line][col] * VON_KARMAN));
+    double temp_rah1_terra = (1 / (this->ustar_pointer[pos] * VON_KARMAN));
     double temp_rah2 = log(((zu - DISP) / zom));
     double temp_rah3_terra = temp_rah1_terra * temp_kb_1_terra;
 
-    this->aerodynamic_resistance_vector[line][col] = temp_rah1_terra * temp_rah2 + temp_rah3_terra;
+    this->aerodynamic_resistance_pointer[pos] = temp_rah1_terra * temp_rah2 + temp_rah3_terra;
   }
 };
 
@@ -428,168 +445,18 @@ void Products::aerodynamic_resistance_fuction(vector<double> ustar_line, int wid
     aerodynamic_resistance_line[col] = log(20) / (ustar_line[col] * VON_KARMAN);
 };
 
-void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32_t height_band, uint32_t width_band, int threads_num)
+void Products::sensible_heat_flux_function(double a, double b, int line)
 {
-  using namespace std::chrono;
-  system_clock::time_point begin, end, begin_core, end_core;
-  int64_t general_time, initial_time, final_time, general_time_core, initial_time_core, final_time_core;
-
-  thread threads[threads_num];
-  int lines_per_thread = height_band / threads_num;
-
-  // ============== COMPUTE NDVI MIN MAX
-
-  begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  double ustar_station = (VON_KARMAN * station.v6) / (log(station.WIND_SPEED / station.SURFACE_ROUGHNESS));
-  double u10 = (ustar_station / VON_KARMAN) * log(10 / station.SURFACE_ROUGHNESS);
-  double ndvi_min = 1.0;
-  double ndvi_max = -1.0;
-  for (int line = 0; line < height_band; line++)
+  for (int col = 0; col < width_band; col++)
   {
-    vector<double> ndvi_line = ndvi_vector[line];
-    for (int col = 0; col < width_band; col++)
+    int pos = line * width_band + col;
+    sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (surface_temperature_vector[line][col] - 273.15)) / aerodynamic_resistance_pointer[pos];
+
+    if (!isnan(sensible_heat_flux_vector[line][col]) && sensible_heat_flux_vector[line][col] > (net_radiation_vector[line][col] - soil_heat_vector[line][col]))
     {
-      if (ndvi_line[col] < ndvi_min)
-        ndvi_min = ndvi_line[col];
-      if (ndvi_line[col] > ndvi_max)
-        ndvi_max = ndvi_line[col];
+      sensible_heat_flux_vector[line][col] = net_radiation_vector[line][col] - soil_heat_vector[line][col];
     }
   }
-  end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  // std::cout << "P2 - RAH - SERIAL - NDVI MIN & MAX, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
-
-  // ============== COMPUTE INITIAL RAH
-
-  begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  for (int j = 0; j < threads_num; j++)
-  {
-    int start_line = j * lines_per_thread;
-    int end_line = (j == threads_num - 1) ? height_band : (j + 1) * lines_per_thread;
-    auto compute_initial_rah_function = [&](Station station, int start_line, int end_line, double ndvi_min, double ndvi_max, double u10)
-    {
-      this->rah_initial_value_STEEP(station, start_line, end_line, ndvi_min, ndvi_max, u10);
-    };
-
-    threads[j] = thread(compute_initial_rah_function, station, start_line, end_line, ndvi_min, ndvi_max, u10);
-  }
-
-  for (int k = 0; k < threads_num; k++)
-    threads[k].join();
-
-  end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  // std::cout << "P2 - RAH - SERIAL - RAH INITIAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
-
-  // ============== COMPUTE FINAL RAH
-
-  begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-
-  double hot_pixel_aerodynamic = aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col];
-  hot_pixel.aerodynamic_resistance.push_back(hot_pixel_aerodynamic);
-
-  double cold_pixel_aerodynamic = aerodynamic_resistance_vector[cold_pixel.line][cold_pixel.col];
-  cold_pixel.aerodynamic_resistance.push_back(cold_pixel_aerodynamic);
-
-  double fc_hot = 1 - pow((ndvi_vector[hot_pixel.line][hot_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
-  double fc_cold = 1 - pow((ndvi_vector[cold_pixel.line][cold_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
-
-  double H_pf_terra;
-  double H_pq_terra;
-  double rah_ini_pq_terra;
-  double rah_ini_pf_terra;
-
-  for (int i = 0; i < 2; i++)
-  {
-    ustar_previous = ustar_vector;
-    aerodynamic_resistance_previous = aerodynamic_resistance_vector;
-
-    rah_ini_pq_terra = hot_pixel.aerodynamic_resistance[i];
-    rah_ini_pf_terra = cold_pixel.aerodynamic_resistance[i];
-
-    double LEc_terra = 0.55 * fc_hot * (hot_pixel.net_radiation - hot_pixel.soil_heat_flux) * 0.78;
-    double LEc_terra_pf = 1.75 * fc_cold * (cold_pixel.net_radiation - cold_pixel.soil_heat_flux) * 0.78;
-
-    H_pf_terra = cold_pixel.net_radiation - cold_pixel.soil_heat_flux - LEc_terra_pf;
-    double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
-
-    H_pq_terra = hot_pixel.net_radiation - hot_pixel.soil_heat_flux - LEc_terra;
-    double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
-
-    double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
-    double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
-
-    // ==== Paralelization core
-    begin_core = system_clock::now();
-    initial_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-
-    for (int j = 0; j < threads_num; j++)
-    {
-      int start_line = j * lines_per_thread;
-      int end_line = (j == threads_num - 1) ? height_band : (j + 1) * lines_per_thread;
-      auto rah_correction_cycle_STEEP_TRD = [&](int start_line, int end_line, Candidate hot_pixel, Candidate cold_pixel, double a, double b)
-      {
-        this->rah_correction_cycle_STEEP(start_line, end_line, hot_pixel, cold_pixel, a, b);
-      };
-
-      threads[j] = thread(rah_correction_cycle_STEEP_TRD, start_line, end_line, hot_pixel, cold_pixel, a, b);
-    }
-
-    for (int k = 0; k < threads_num; k++)
-      threads[k].join();
-
-    end_core = system_clock::now();
-    general_time_core = duration_cast<milliseconds>(end_core - begin_core).count();
-    final_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-    // std::cout << "P2 - RAH - PARALLEL - CORE, " << general_time_core << ", " << initial_time_core << ", " << final_time_core << std::endl;
-    // ==== 
-
-    double rah_hot = this->aerodynamic_resistance_vector[hot_pixel.line][hot_pixel.col];
-    hot_pixel.aerodynamic_resistance.push_back(rah_hot);
-
-    double rah_cold = this->aerodynamic_resistance_vector[cold_pixel.line][cold_pixel.col];
-    cold_pixel.aerodynamic_resistance.push_back(rah_cold);
-  }
-  end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  // std::cout << "P2 - RAH - PARALLEL - RAH FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
-
-  // ============== COMPUTE H
-
-  begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-
-  double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
-  double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
-
-  double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
-  double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
-
-  for (int j = 0; j < threads_num; j++)
-  {
-    int start_line = j * lines_per_thread;
-    int end_line = (j == threads_num - 1) ? height_band : (j + 1) * lines_per_thread;
-    auto sensible_heat_flux_final_TRD = [&](int start_line, int end_line, double a, double b)
-    {
-      this->sensible_heat_flux_final(start_line, end_line, a, b);
-    };
-
-    threads[j] = thread(sensible_heat_flux_final_TRD, start_line, end_line, a, b);
-  }
-
-  for (int k = 0; k < threads_num; k++)
-    threads[k].join();
-
-  end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  // std::cout << "P2 - RAH - H FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 };
 
 void Products::latent_heat_flux_function(int width_band, int line)
@@ -642,90 +509,123 @@ void Products::evapotranspiration_function(int width_band, int line)
     this->evapotranspiration_vector[line][col] = this->net_radiation_24h_vector[line][col] * this->evapotranspiration_fraction_vector[line][col] * 0.035;
 };
 
-// ============ PARALLEL FUNCTIONS ============
-
-void Products::rah_initial_value_STEEP(Station station, int start_line, int end_line, double ndvi_min, double ndvi_max, double u10)
+string Products::rah_correction_function_serial(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel)
 {
-  for (int line = start_line; line < end_line; line++)
+  system_clock::time_point begin_core, end_core;
+  int64_t general_time_core, initial_time_core, final_time_core;
+
+  double hot_pixel_aerodynamic = aerodynamic_resistance_pointer[hot_pixel.line * width_band + hot_pixel.col];
+  hot_pixel.aerodynamic_resistance.push_back(hot_pixel_aerodynamic);
+
+  double cold_pixel_aerodynamic = aerodynamic_resistance_pointer[cold_pixel.line * width_band + cold_pixel.col];
+  cold_pixel.aerodynamic_resistance.push_back(cold_pixel_aerodynamic);
+
+  double fc_hot = 1 - pow((ndvi_vector[hot_pixel.line][hot_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
+  double fc_cold = 1 - pow((ndvi_vector[cold_pixel.line][cold_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
+
+  for (int i = 0; i < 2; i++)
   {
-    d0_fuction(line);
-    zom_fuction(station.A_ZOM, station.B_ZOM, line);
-    ustar_fuction(u10, line);
-    kb_function(ndvi_max, ndvi_min, line);
-    aerodynamic_resistance_fuction(line);
+    this->rah_ini_pq_terra = hot_pixel.aerodynamic_resistance[i];
+    this->rah_ini_pf_terra = cold_pixel.aerodynamic_resistance[i];
+
+    double LEc_terra = 0.55 * fc_hot * (hot_pixel.net_radiation - hot_pixel.soil_heat_flux) * 0.78;
+    double LEc_terra_pf = 1.75 * fc_cold * (cold_pixel.net_radiation - cold_pixel.soil_heat_flux) * 0.78;
+
+    this->H_pf_terra = cold_pixel.net_radiation - cold_pixel.soil_heat_flux - LEc_terra_pf;
+    double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
+
+    this->H_pq_terra = hot_pixel.net_radiation - hot_pixel.soil_heat_flux - LEc_terra;
+    double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
+
+    double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
+    double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
+
+    // ==== Paralelization core
+    begin_core = system_clock::now();
+    initial_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
+    rah_correction_cycle_STEEP(0, height_band, width_band, a, b, surface_temperature_pointer,
+                            d0_pointer, zom_pointer, kb1_pointer, sensible_heat_flux_pointer, ustar_pointer,
+                            aerodynamic_resistance_pointer);
+
+    end_core = system_clock::now();
+    general_time_core = duration_cast<milliseconds>(end_core - begin_core).count();
+    final_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    // ==== Paralelization core
+
+    double rah_hot = this->aerodynamic_resistance_pointer[hot_pixel.line * width_band + hot_pixel.col];
+    hot_pixel.aerodynamic_resistance.push_back(rah_hot);
+
+    double rah_cold = this->aerodynamic_resistance_pointer[cold_pixel.line * width_band + cold_pixel.col];
+    cold_pixel.aerodynamic_resistance.push_back(rah_cold);
   }
+
+  return "P2 - RAH - PARALLEL - CORE, " + to_string(general_time_core) + ", " + to_string(initial_time_core) + ", " + to_string(final_time_core) + "\n";
 }
 
-void Products::rah_correction_cycle_STEEP(int start_line, int end_line, Candidate hot_pixel, Candidate cold_pixel, double a, double b)
+string Products::rah_correction_function_threads(int threads_num, double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel)
 {
-  // using namespace std::chrono;
-  // int64_t general_time, initial_time, final_time;
-  // system_clock::time_point begin, end;
+  system_clock::time_point begin_core, end_core;
+  int64_t general_time_core, initial_time_core, final_time_core;
 
-  // begin = system_clock::now();
-  // initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  for (int line = start_line; line < end_line; line++)
+  // ==== Threads setup
+  int lines_per_thread = height_band / threads_num;
+  thread threads[threads_num];
+  // ==== Threads setup
+
+  double hot_pixel_aerodynamic = aerodynamic_resistance_pointer[hot_pixel.line * width_band + hot_pixel.col];
+  hot_pixel.aerodynamic_resistance.push_back(hot_pixel_aerodynamic);
+
+  double cold_pixel_aerodynamic = aerodynamic_resistance_pointer[cold_pixel.line * width_band + cold_pixel.col];
+  cold_pixel.aerodynamic_resistance.push_back(cold_pixel_aerodynamic);
+
+  double fc_hot = 1 - pow((ndvi_vector[hot_pixel.line][hot_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
+  double fc_cold = 1 - pow((ndvi_vector[cold_pixel.line][cold_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
+
+  for (int i = 0; i < 2; i++)
   {
-    for (int col = 0; col < this->width_band; col++)
+    this->rah_ini_pq_terra = hot_pixel.aerodynamic_resistance[i];
+    this->rah_ini_pf_terra = cold_pixel.aerodynamic_resistance[i];
+
+    double LEc_terra = 0.55 * fc_hot * (hot_pixel.net_radiation - hot_pixel.soil_heat_flux) * 0.78;
+    double LEc_terra_pf = 1.75 * fc_cold * (cold_pixel.net_radiation - cold_pixel.soil_heat_flux) * 0.78;
+
+    this->H_pf_terra = cold_pixel.net_radiation - cold_pixel.soil_heat_flux - LEc_terra_pf;
+    double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
+
+    this->H_pq_terra = hot_pixel.net_radiation - hot_pixel.soil_heat_flux - LEc_terra;
+    double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
+
+    double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
+    double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
+
+    // ==== Paralelization core
+    begin_core = system_clock::now();
+    initial_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
+    for (int j = 0; j < threads_num; j++)
     {
-      double DISP = this->d0_vector[line][col];
-      double dT_ini_terra = (a + b * (this->surface_temperature_vector[line][col] - 273.15));
-
-      // H_ini_terra
-      this->sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / this->aerodynamic_resistance_previous[line][col];
-
-      // L_MB_terra
-      double ustar_pow_3 = this->ustar_previous[line][col] * this->ustar_previous[line][col] * this->ustar_previous[line][col];
-
-      double L = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * this->surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * this->sensible_heat_flux_vector[line][col]));
-
-      double y2 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
-      double x200 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
-
-      double psi2, psi200;
-      if (!isnan(L) && L > 0)
-      {
-        psi2 = -5 * ((10 - DISP) / L);
-        psi200 = -5 * ((10 - DISP) / L);
-      }
-      else
-      {
-        psi2 = 2 * log((1 + y2 * y2) / 2);
-        psi200 = 2 * log((1 + x200) / 2) + log((1 + x200 * x200) / 2) - 2 * atan(x200) + 0.5 * M_PI;
-      }
-
-      // u*
-      double ust = (VON_KARMAN * this->ustar_previous[line][col]) / (log((10 - DISP) / this->zom_vector[line][col]) - psi200);
-
-      // rah
-      double zoh_terra = this->zom_vector[line][col] / pow(exp(1.0), (this->kb1_vector[line][col]));
-      double temp_rah1_corr_terra = (ust * VON_KARMAN);
-      double temp_rah2_corr_terra = log((10 - DISP) / this->zom_vector[line][col]) - psi2;
-      double temp_rah3_corr_terra = temp_rah1_corr_terra * log(this->zom_vector[line][col] / zoh_terra);
-      double rah = (temp_rah1_corr_terra * temp_rah2_corr_terra) + temp_rah3_corr_terra;
-
-      this->ustar_vector[line][col] = ust;
-      this->aerodynamic_resistance_vector[line][col] = rah;
+      int start_line = j * lines_per_thread;
+      int end_line = (j == threads_num - 1) ? height_band : (j + 1) * lines_per_thread;
+      threads[j] = thread(rah_correction_cycle_STEEP, start_line, end_line, width_band, a, b, surface_temperature_pointer,
+                          d0_pointer, zom_pointer, kb1_pointer, sensible_heat_flux_pointer, ustar_pointer,
+                          aerodynamic_resistance_pointer);
     }
-  }
-  // end = system_clock::now();
-  // general_time = duration_cast<milliseconds>(end - begin).count();
-  // final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  // std::cout << "P2 - RAH - THREAD: " << start_line << "x" << end_line << ", " << general_time << ", " << initial_time << ", " << final_time << std::endl;
-};
 
-void Products::sensible_heat_flux_final(int start_line, int end_line, double a, double b)
-{
-  for (int line = start_line; line < end_line; line++)
-  {
-    for (int col = 0; col < width_band; col++)
-    {
-      this->sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (this->surface_temperature_vector[line][col] - 273.15)) / this->aerodynamic_resistance_vector[line][col];
+    for (int j = 0; j < threads_num; j++)
+      threads[j].join();
 
-      if (!isnan(this->sensible_heat_flux_vector[line][col]) && this->sensible_heat_flux_vector[line][col] > (this->net_radiation_vector[line][col] - this->soil_heat_vector[line][col]))
-      {
-        this->sensible_heat_flux_vector[line][col] = this->net_radiation_vector[line][col] - this->soil_heat_vector[line][col];
-      }
-    }
+    end_core = system_clock::now();
+    general_time_core = duration_cast<milliseconds>(end_core - begin_core).count();
+    final_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    // ==== Paralelization core
+
+    double rah_hot = this->aerodynamic_resistance_pointer[hot_pixel.line * width_band + hot_pixel.col];
+    hot_pixel.aerodynamic_resistance.push_back(rah_hot);
+
+    double rah_cold = this->aerodynamic_resistance_pointer[cold_pixel.line * width_band + cold_pixel.col];
+    cold_pixel.aerodynamic_resistance.push_back(rah_cold);
   }
+
+  return "P2 - RAH - PARALLEL - CORE " + to_string(threads_num) + ", " + to_string(general_time_core) + ", " + to_string(initial_time_core) + ", " + to_string(final_time_core) + "\n";
 }

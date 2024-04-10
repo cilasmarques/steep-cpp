@@ -1,38 +1,26 @@
-# pragma once
+#pragma once
 
 #include "parameters.h"
 #include "candidate.h"
 
 /**
- * @brief  Compute the initial value for the rah. (STEEP algorithm)
- * 
- * @param  station: Station struct.
- * @param  start_line: Start line.
- * @param  end_line: End line.
- * @param  ndvi_min: Minimum NDVI value.
- * @param  ndvi_max: Maximum NDVI value.
- * @param  u10: Wind speed at 10 m.
-*/
-void rah_initial_value_STEEP(Station station, int start_line, int end_line, double ndvi_min, double ndvi_max, double u10);
-
-/**
  * @brief  Compute the rah correction cycle. (STEEP algorithm)
- * 
- * @param  start_line: Start line.
- * @param  end_line: End line.
- * @param  hot_pixel: Hot pixel.
- * @param  cold_pixel: Cold pixel.
- * @param  a: Coefficient A.
- * @param  b: Coefficient B.
-*/
-void rah_correction_cycle_STEEP(int start_line, int end_line, Candidate hot_pixel, Candidate cold_pixel, double a, double b);
-
-/**
- * @brief  Compute the final value for the rah. 
- * 
- * @param  start_line: Start line.
- * @param  end_line: End line.
- * @param  a: Coefficient A.
- * @param  b: Coefficient B.
-*/
-void sensible_heat_flux_final(int start_line, int end_line, double a, double b);
+ *
+ * @param  start_line: The start line of the band.
+ * @param  end_line: The end line of the band.
+ * @param  width_band: The width of the band.
+ * @param  a: The a parameter.
+ * @param  b: The b parameter.
+ * @param  surface_temperature_pointer: The surface temperature vector.
+ * @param  d0_pointer: The d0 vector.
+ * @param  aerodynamic_resistance_previous: The aerodynamic resistance vector of the previous iteration.
+ * @param  ustar_previous: The ustar vector of the previous iteration.
+ * @param  zom_pointer: The zom vector.
+ * @param  kb1_pointer: The kb1 vector.
+ * @param  sensible_heat_flux_pointer: The sensible heat flux vector.
+ * @param  ustar_pointer: The ustar vector.
+ * @param  aerodynamic_resistance_pointer: The aerodynamic resistance vector.
+ */
+void rah_correction_cycle_STEEP(int start_line, int end_line, int width_band, double a, double b, double *surface_temperature_pointer,
+                                double *d0_pointer, double *zom_pointer, double *kb1_pointer, double *sensible_heat_flux_pointer, 
+                                double *ustar_pointer, double *aerodynamic_resistance_pointer);

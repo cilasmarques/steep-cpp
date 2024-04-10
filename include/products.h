@@ -6,9 +6,6 @@
 #include "constants.h"
 #include "parameters.h"
 
-#include "kernels.h"
-#include "kernels.cuh"
-
 /**
  * @brief  Struct to manage the products calculation.
  */
@@ -320,8 +317,34 @@ struct Products
 
   /**
    * @brief  The  aerodynamic resistance convergence is computed.
-   * @param  width_band: Band width.
-   * @param  line: Line to be computed.
+   * @param  threads_num: Number of threads.
+   * @param  ndvi_min: Minimum NDVI.
+   * @param  ndvi_max: Maximum NDVI.
+   * @param  hot_pixel: Hot pixel.
+   * @param  cold_pixel: Cold pixel.
+   * @return  string: Time message.
    */
-  string rah_correction_function(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel);
+  string rah_correction_function_serial(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel);
+
+  /**
+   * @brief  The  aerodynamic resistance convergence is computed.
+   * @param  threads_num: Number of threads.
+   * @param  ndvi_min: Minimum NDVI.
+   * @param  ndvi_max: Maximum NDVI.
+   * @param  hot_pixel: Hot pixel.
+   * @param  cold_pixel: Cold pixel.
+   * @return  string: Time message.
+   */
+  string rah_correction_function_threads(int threads_num, double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel);
+
+  /**
+   * @brief  The  aerodynamic resistance convergence is computed.
+   * @param  threads_num: Number of threads.
+   * @param  ndvi_min: Minimum NDVI.
+   * @param  ndvi_max: Maximum NDVI.
+   * @param  hot_pixel: Hot pixel.
+   * @param  cold_pixel: Cold pixel.
+   * @return  string: Time message.
+   */
+  string rah_correction_function_blocks(int threads_num, double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel);
 };
