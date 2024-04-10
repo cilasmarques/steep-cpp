@@ -1,4 +1,8 @@
 #include "products.h"
+#include "kernels.cuh"
+#include "cuda_utils.h"
+
+Products::Products() {}
 
 Products::Products(uint32_t width_band, uint32_t height_band)
 {
@@ -442,202 +446,18 @@ void Products::aerodynamic_resistance_fuction(vector<double> ustar_line, int wid
     aerodynamic_resistance_line[col] = log(20) / (ustar_line[col] * VON_KARMAN);
 };
 
-void Products::sensible_heat_function_STEEP(Candidate hot_pixel, Candidate cold_pixel, Station station, uint32_t height_band, uint32_t width_band, int threads_num, int blocks_num)
+void Products::sensible_heat_flux_function(double a, double b, int line)
 {
-  using namespace std::chrono;
-  system_clock::time_point begin, end, begin_core, end_core;
-  int64_t general_time, initial_time, final_time, general_time_core, initial_time_core, final_time_core;
-
-  thread threads[threads_num];
-  int lines_per_thread = ceil(height_band / threads_num);
-
-  // ========= CUDA Setup
-  int dev = 0;
-  cudaDeviceProp deviceProp;
-  HANDLE_ERROR(cudaGetDeviceProperties(&deviceProp, dev));
-  HANDLE_ERROR(cudaSetDevice(dev));
-
-  int num_sms = deviceProp.multiProcessorCount;
-  int num_blocks = deviceProp.maxBlocksPerMultiProcessor * num_sms;
-  int num_threads = deviceProp.maxThreadsPerMultiProcessor * num_blocks;
-
-  dim3 blockSize(1, 1024);
-  dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, (height_band + blockSize.y - 1) / blockSize.y);
-  // dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, blocks_num);
-
-  // ============== COMPUTE NDVI MIN MAX
-
-  begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  double ustar_station = (VON_KARMAN * station.v6) / (log(station.WIND_SPEED / station.SURFACE_ROUGHNESS));
-  double u10 = (ustar_station / VON_KARMAN) * log(10 / station.SURFACE_ROUGHNESS);
-  double ndvi_min = 1.0;
-  double ndvi_max = -1.0;
-  for (int line = 0; line < height_band; line++)
+  for (int col = 0; col < width_band; col++)
   {
-    vector<double> ndvi_line = ndvi_vector[line];
-    for (int col = 0; col < width_band; col++)
+    int pos = line * width_band + col;
+    sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (surface_temperature_vector[line][col] - 273.15)) / aerodynamic_resistance_pointer[pos];
+
+    if (!isnan(sensible_heat_flux_vector[line][col]) && sensible_heat_flux_vector[line][col] > (net_radiation_vector[line][col] - soil_heat_vector[line][col]))
     {
-      if (ndvi_line[col] < ndvi_min)
-        ndvi_min = ndvi_line[col];
-      if (ndvi_line[col] > ndvi_max)
-        ndvi_max = ndvi_line[col];
+      sensible_heat_flux_vector[line][col] = net_radiation_vector[line][col] - soil_heat_vector[line][col];
     }
   }
-  end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - SERIAL - NDVI MIN & MAX, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
-
-  // ============== COMPUTE INITIAL RAH
-
-  begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  for (int j = 0; j < threads_num; j++)
-  {
-    int start_line = j * lines_per_thread;
-    int end_line = (j == threads_num - 1) ? height_band : (j + 1) * lines_per_thread;
-    auto compute_initial_rah_function = [&](Station station, int start_line, int end_line, double ndvi_min, double ndvi_max, double u10)
-    {
-      this->rah_initial_value_STEEP(station, start_line, end_line, ndvi_min, ndvi_max, u10);
-    };
-
-    threads[j] = thread(compute_initial_rah_function, station, start_line, end_line, ndvi_min, ndvi_max, u10);
-  }
-
-  for (int k = 0; k < threads_num; k++)
-    threads[k].join();
-
-  end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - SERIAL - RAH INITIAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
-
-  // ============== COMPUTE FINAL RAH
-
-  begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-
-  double hot_pixel_aerodynamic = aerodynamic_resistance_pointer[hot_pixel.line * width_band + hot_pixel.col];
-  hot_pixel.aerodynamic_resistance.push_back(hot_pixel_aerodynamic);
-
-  double cold_pixel_aerodynamic = aerodynamic_resistance_pointer[cold_pixel.line * width_band + cold_pixel.col];
-  cold_pixel.aerodynamic_resistance.push_back(cold_pixel_aerodynamic);
-
-  double fc_hot = 1 - pow((ndvi_vector[hot_pixel.line][hot_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
-  double fc_cold = 1 - pow((ndvi_vector[cold_pixel.line][cold_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
-
-  double H_pf_terra;
-  double H_pq_terra;
-  double rah_ini_pq_terra;
-  double rah_ini_pf_terra;
-
-  double *devZom, *devTS, *devUstarR, *devUstarW, *devRahR, *devRahW, *devD0, *devKB1, *devH;
-  HANDLE_ERROR(cudaMalloc((void **)&devZom, nBytes_band));
-  HANDLE_ERROR(cudaMalloc((void **)&devD0, nBytes_band));
-  HANDLE_ERROR(cudaMalloc((void **)&devKB1, nBytes_band));
-  HANDLE_ERROR(cudaMalloc((void **)&devTS, nBytes_band));
-  HANDLE_ERROR(cudaMalloc((void **)&devUstarR, nBytes_band));
-  HANDLE_ERROR(cudaMalloc((void **)&devUstarW, nBytes_band));
-  HANDLE_ERROR(cudaMalloc((void **)&devRahR, nBytes_band));
-  HANDLE_ERROR(cudaMalloc((void **)&devRahW, nBytes_band));
-  HANDLE_ERROR(cudaMalloc((void **)&devH, nBytes_band));
-
-  for (int i = 0; i < 2; i++)
-  {
-    rah_ini_pq_terra = hot_pixel.aerodynamic_resistance[i];
-    rah_ini_pf_terra = cold_pixel.aerodynamic_resistance[i];
-
-    double LEc_terra = 0.55 * fc_hot * (hot_pixel.net_radiation - hot_pixel.soil_heat_flux) * 0.78;
-    double LEc_terra_pf = 1.75 * fc_cold * (cold_pixel.net_radiation - cold_pixel.soil_heat_flux) * 0.78;
-
-    H_pf_terra = cold_pixel.net_radiation - cold_pixel.soil_heat_flux - LEc_terra_pf;
-    double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
-
-    H_pq_terra = hot_pixel.net_radiation - hot_pixel.soil_heat_flux - LEc_terra;
-    double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
-
-    double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
-    double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
-
-    HANDLE_ERROR(cudaMemcpy(devTS, surface_temperature_pointer, nBytes_band, cudaMemcpyHostToDevice));
-    HANDLE_ERROR(cudaMemcpy(devZom, zom_pointer, nBytes_band, cudaMemcpyHostToDevice));
-    HANDLE_ERROR(cudaMemcpy(devD0, d0_pointer, nBytes_band, cudaMemcpyHostToDevice));
-    HANDLE_ERROR(cudaMemcpy(devKB1, kb1_pointer, nBytes_band, cudaMemcpyHostToDevice));
-    HANDLE_ERROR(cudaMemcpy(devUstarR, ustar_pointer, nBytes_band, cudaMemcpyHostToDevice));
-    HANDLE_ERROR(cudaMemcpy(devRahR, aerodynamic_resistance_pointer, nBytes_band, cudaMemcpyHostToDevice));
-    HANDLE_ERROR(cudaMemcpy(devH, sensible_heat_flux_pointer, nBytes_band, cudaMemcpyHostToDevice));
-
-    // ==== Paralelization core
-    begin_core = system_clock::now();
-    initial_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-
-    // correctionCycleSTEEP<<<gridSize, blockSize>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
-    correctionCycleSTEEP<<<num_threads, num_blocks>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
-    HANDLE_ERROR(cudaDeviceSynchronize());
-    HANDLE_ERROR(cudaGetLastError());
-
-    end_core = system_clock::now();
-    general_time_core = duration_cast<milliseconds>(end_core - begin_core).count();
-    final_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-    std::cout << "P2 - RAH - PARALLEL - CORE, " << general_time_core << ", " << initial_time_core << ", " << final_time_core << std::endl;
-    // ==== 
-
-    HANDLE_ERROR(cudaMemcpy(ustar_pointer, devUstarW, nBytes_band, cudaMemcpyDeviceToHost));
-    HANDLE_ERROR(cudaMemcpy(aerodynamic_resistance_pointer, devRahW, nBytes_band, cudaMemcpyDeviceToHost));
-    HANDLE_ERROR(cudaMemcpy(sensible_heat_flux_pointer, devH, nBytes_band, cudaMemcpyDeviceToHost));
-
-    double rah_hot = this->aerodynamic_resistance_pointer[hot_pixel.line * width_band + hot_pixel.col];
-    hot_pixel.aerodynamic_resistance.push_back(rah_hot);
-
-    double rah_cold = this->aerodynamic_resistance_pointer[cold_pixel.line * width_band + cold_pixel.col];
-    cold_pixel.aerodynamic_resistance.push_back(rah_cold);
-  }
-  end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - PARALLEL - RAH FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
-
-  HANDLE_ERROR(cudaFree(devZom));
-  HANDLE_ERROR(cudaFree(devD0));
-  HANDLE_ERROR(cudaFree(devKB1));
-  HANDLE_ERROR(cudaFree(devTS));
-  HANDLE_ERROR(cudaFree(devUstarR));
-  HANDLE_ERROR(cudaFree(devUstarW));
-  HANDLE_ERROR(cudaFree(devRahR));
-  HANDLE_ERROR(cudaFree(devRahW));
-  HANDLE_ERROR(cudaDeviceReset());
-
-  // ============== COMPUTE H
-
-  begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-
-  double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
-  double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
-
-  double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
-  double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
-
-  for (int j = 0; j < threads_num; j++)
-  {
-    int start_line = j * lines_per_thread;
-    int end_line = (j == threads_num - 1) ? height_band : (j + 1) * lines_per_thread;
-    auto sensible_heat_flux_final_TRD = [&](int start_line, int end_line, double a, double b)
-    {
-      this->sensible_heat_flux_final(start_line, end_line, a, b);
-    };
-
-    threads[j] = thread(sensible_heat_flux_final_TRD, start_line, end_line, a, b);
-  }
-
-  for (int k = 0; k < threads_num; k++)
-    threads[k].join();
-
-  end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - H FINAL, " << general_time << ", " << initial_time << ", " << final_time << std::endl;
 };
 
 void Products::latent_heat_flux_function(int width_band, int line)
@@ -690,92 +510,104 @@ void Products::evapotranspiration_function(int width_band, int line)
     this->evapotranspiration_vector[line][col] = this->net_radiation_24h_vector[line][col] * this->evapotranspiration_fraction_vector[line][col] * 0.035;
 };
 
-// ============ PARALLEL FUNCTIONS ============
-
-void Products::rah_initial_value_STEEP(Station station, int start_line, int end_line, double ndvi_min, double ndvi_max, double u10)
+string Products::rah_correction_function_blocks(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel)
 {
-  for (int line = start_line; line < end_line; line++)
+  system_clock::time_point begin_core, end_core;
+  int64_t general_time_core, initial_time_core, final_time_core;
+
+  // ========= CUDA Setup
+  int dev = 0;
+  cudaDeviceProp deviceProp;
+  HANDLE_ERROR(cudaGetDeviceProperties(&deviceProp, dev));
+  HANDLE_ERROR(cudaSetDevice(dev));
+
+  int num_sms = deviceProp.multiProcessorCount;
+  // int num_blocks = deviceProp.maxBlocksPerMultiProcessor * num_sms;
+  // int num_threads = deviceProp.maxThreadsPerMultiProcessor * num_blocks;
+
+  dim3 blockSize(1, 1024);
+  dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, num_sms);
+  // dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, (height_band + blockSize.y - 1) / blockSize.y);
+
+  double hot_pixel_aerodynamic = aerodynamic_resistance_pointer[hot_pixel.line * width_band + hot_pixel.col];
+  hot_pixel.aerodynamic_resistance.push_back(hot_pixel_aerodynamic);
+
+  double cold_pixel_aerodynamic = aerodynamic_resistance_pointer[cold_pixel.line * width_band + cold_pixel.col];
+  cold_pixel.aerodynamic_resistance.push_back(cold_pixel_aerodynamic);
+
+  double fc_hot = 1 - pow((ndvi_vector[hot_pixel.line][hot_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
+  double fc_cold = 1 - pow((ndvi_vector[cold_pixel.line][cold_pixel.col] - ndvi_max) / (ndvi_min - ndvi_max), 0.4631);
+
+  double *devZom, *devTS, *devUstarR, *devUstarW, *devRahR, *devRahW, *devD0, *devKB1, *devH;
+  HANDLE_ERROR(cudaMalloc((void **)&devZom, nBytes_band));
+  HANDLE_ERROR(cudaMalloc((void **)&devD0, nBytes_band));
+  HANDLE_ERROR(cudaMalloc((void **)&devKB1, nBytes_band));
+  HANDLE_ERROR(cudaMalloc((void **)&devTS, nBytes_band));
+  HANDLE_ERROR(cudaMalloc((void **)&devUstarR, nBytes_band));
+  HANDLE_ERROR(cudaMalloc((void **)&devUstarW, nBytes_band));
+  HANDLE_ERROR(cudaMalloc((void **)&devRahR, nBytes_band));
+  HANDLE_ERROR(cudaMalloc((void **)&devRahW, nBytes_band));
+  HANDLE_ERROR(cudaMalloc((void **)&devH, nBytes_band));
+
+  for (int i = 0; i < 2; i++)
   {
-    d0_fuction(line);
-    zom_fuction(station.A_ZOM, station.B_ZOM, line);
-    ustar_fuction(u10, line);
-    kb_function(ndvi_max, ndvi_min, line);
-    aerodynamic_resistance_fuction(line);
+    this->rah_ini_pq_terra = hot_pixel.aerodynamic_resistance[i];
+    this->rah_ini_pf_terra = cold_pixel.aerodynamic_resistance[i];
+
+    double LEc_terra = 0.55 * fc_hot * (hot_pixel.net_radiation - hot_pixel.soil_heat_flux) * 0.78;
+    double LEc_terra_pf = 1.75 * fc_cold * (cold_pixel.net_radiation - cold_pixel.soil_heat_flux) * 0.78;
+
+    this->H_pf_terra = cold_pixel.net_radiation - cold_pixel.soil_heat_flux - LEc_terra_pf;
+    double dt_pf_terra = H_pf_terra * rah_ini_pf_terra / (RHO * SPECIFIC_HEAT_AIR);
+
+    this->H_pq_terra = hot_pixel.net_radiation - hot_pixel.soil_heat_flux - LEc_terra;
+    double dt_pq_terra = H_pq_terra * rah_ini_pq_terra / (RHO * SPECIFIC_HEAT_AIR);
+
+    double b = (dt_pq_terra - dt_pf_terra) / (hot_pixel.temperature - cold_pixel.temperature);
+    double a = dt_pf_terra - (b * (cold_pixel.temperature - 273.15));
+
+    HANDLE_ERROR(cudaMemcpy(devTS, surface_temperature_pointer, nBytes_band, cudaMemcpyHostToDevice));
+    HANDLE_ERROR(cudaMemcpy(devZom, zom_pointer, nBytes_band, cudaMemcpyHostToDevice));
+    HANDLE_ERROR(cudaMemcpy(devD0, d0_pointer, nBytes_band, cudaMemcpyHostToDevice));
+    HANDLE_ERROR(cudaMemcpy(devKB1, kb1_pointer, nBytes_band, cudaMemcpyHostToDevice));
+    HANDLE_ERROR(cudaMemcpy(devUstarR, ustar_pointer, nBytes_band, cudaMemcpyHostToDevice));
+    HANDLE_ERROR(cudaMemcpy(devRahR, aerodynamic_resistance_pointer, nBytes_band, cudaMemcpyHostToDevice));
+    HANDLE_ERROR(cudaMemcpy(devH, sensible_heat_flux_pointer, nBytes_band, cudaMemcpyHostToDevice));
+
+    // ==== Paralelization core
+    begin_core = system_clock::now();
+    initial_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
+    rah_correction_cycle_STEEP<<<gridSize, blockSize>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
+    // rah_correction_cycle_STEEP<<<num_threads, num_blocks>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
+    HANDLE_ERROR(cudaDeviceSynchronize());
+    HANDLE_ERROR(cudaGetLastError());
+
+    end_core = system_clock::now();
+    general_time_core = duration_cast<milliseconds>(end_core - begin_core).count();
+    final_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    // ==== 
+
+    HANDLE_ERROR(cudaMemcpy(ustar_pointer, devUstarW, nBytes_band, cudaMemcpyDeviceToHost));
+    HANDLE_ERROR(cudaMemcpy(aerodynamic_resistance_pointer, devRahW, nBytes_band, cudaMemcpyDeviceToHost));
+    HANDLE_ERROR(cudaMemcpy(sensible_heat_flux_pointer, devH, nBytes_band, cudaMemcpyDeviceToHost));
+
+    double rah_hot = this->aerodynamic_resistance_pointer[hot_pixel.line * width_band + hot_pixel.col];
+    hot_pixel.aerodynamic_resistance.push_back(rah_hot);
+
+    double rah_cold = this->aerodynamic_resistance_pointer[cold_pixel.line * width_band + cold_pixel.col];
+    cold_pixel.aerodynamic_resistance.push_back(rah_cold);
   }
-}
 
-void Products::rah_correction_cycle_STEEP(int start_line, int end_line, Candidate hot_pixel, Candidate cold_pixel, double a, double b)
-{
-  using namespace std::chrono;
-  int64_t general_time, initial_time, final_time;
-  system_clock::time_point begin, end;
+  HANDLE_ERROR(cudaFree(devZom));
+  HANDLE_ERROR(cudaFree(devD0));
+  HANDLE_ERROR(cudaFree(devKB1));
+  HANDLE_ERROR(cudaFree(devTS));
+  HANDLE_ERROR(cudaFree(devUstarR));
+  HANDLE_ERROR(cudaFree(devUstarW));
+  HANDLE_ERROR(cudaFree(devRahR));
+  HANDLE_ERROR(cudaFree(devRahW));
+  HANDLE_ERROR(cudaDeviceReset());
 
-  begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  for (int line = start_line; line < end_line; line++)
-  {
-    for (int col = 0; col < this->width_band; col++)
-    {
-      int pos = line * width_band + col;
-      double DISP = this->d0_pointer[pos];
-      double dT_ini_terra = (a + b * (this->surface_temperature_vector[line][col] - 273.15));
-
-      // H_ini_terra
-      this->sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / this->aerodynamic_resistance_pointer[pos];
-
-      // L_MB_terra
-      double ustar_pow_3 = this->ustar_pointer[pos] * this->ustar_pointer[pos] * this->ustar_pointer[pos];
-
-      double L = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * this->surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * this->sensible_heat_flux_vector[line][col]));
-
-      double y2 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
-      double x200 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
-
-      double psi2, psi200;
-      if (!isnan(L) && L > 0)
-      {
-        psi2 = -5 * ((10 - DISP) / L);
-        psi200 = -5 * ((10 - DISP) / L);
-      }
-      else
-      {
-        psi2 = 2 * log((1 + y2 * y2) / 2);
-        psi200 = 2 * log((1 + x200) / 2) + log((1 + x200 * x200) / 2) - 2 * atan(x200) + 0.5 * M_PI;
-      }
-
-      // u*
-      double ust = (VON_KARMAN * this->ustar_pointer[pos]) / (log((10 - DISP) / this->zom_pointer[pos]) - psi200);
-
-      // rah
-      double zoh_terra = this->zom_pointer[pos] / pow(exp(1.0), (this->kb1_pointer[pos]));
-      double temp_rah1_corr_terra = (ust * VON_KARMAN);
-      double temp_rah2_corr_terra = log((10 - DISP) / this->zom_pointer[pos]) - psi2;
-      double temp_rah3_corr_terra = temp_rah1_corr_terra * log(this->zom_pointer[pos] / zoh_terra);
-      double rah = (temp_rah1_corr_terra * temp_rah2_corr_terra) + temp_rah3_corr_terra;
-
-      this->ustar_pointer[pos] = ust;
-      this->aerodynamic_resistance_pointer[pos] = rah;
-    }
-  }
-  end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  std::cout << "P2 - RAH - THREAD: " << start_line << "x" << end_line << ", " << general_time << ", " << initial_time << ", " << final_time << std::endl;
-};
-
-void Products::sensible_heat_flux_final(int start_line, int end_line, double a, double b)
-{
-  for (int line = start_line; line < end_line; line++)
-  {
-    for (int col = 0; col < width_band; col++)
-    {
-      int pos = line * width_band + col;
-      this->sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (this->surface_temperature_vector[line][col] - 273.15)) / this->aerodynamic_resistance_pointer[pos];
-
-      if (!isnan(this->sensible_heat_flux_vector[line][col]) && this->sensible_heat_flux_vector[line][col] > (this->net_radiation_vector[line][col] - this->soil_heat_vector[line][col]))
-      {
-        this->sensible_heat_flux_vector[line][col] = this->net_radiation_vector[line][col] - this->soil_heat_vector[line][col];
-      }
-    }
-  }
+  return "P2 - RAH - PARALLEL - CORE, " + to_string(general_time_core) + ", " + to_string(initial_time_core) + ", " + to_string(final_time_core) + "\n";
 }

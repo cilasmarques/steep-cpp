@@ -7,10 +7,11 @@
  */
 struct MTL
 {
-  int number_sensor, julian_day, year;
-  double sun_elevation, distance_earth_sun;
-  double rad_mult_10, rad_add_10;
   double image_hour;
+  double rad_mult_10, rad_add_10;
+  double sun_elevation, distance_earth_sun;
+
+  int number_sensor, julian_day, year;
 
   /**
    * @brief  Empty constructor. Setting all attributes to 0.
