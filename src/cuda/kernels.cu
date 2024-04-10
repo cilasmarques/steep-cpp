@@ -1,25 +1,24 @@
-#include "kernels.h"
+#include "kernels.cuh"
 
-void rah_correction_cycle_STEEP(int start_line, int end_line, double a, double b, int width_band, int *d0_pointer,
-                                double *zom_pointer, double *ustar_pointer, double *kb1_pointer, double **soil_heat_vector,
-                                double *aerodynamic_resistance_pointer, double **surface_temperature_vector,
-                                double **net_radiation_vector, double **sensible_heat_flux_vector)
+__global__ void rah_correction_cycle_STEEP(double *surface_temperature_pointer, double *d0_pointer, double *kb1_pointer, double *zom_pointer, double *ustarR_pointer,
+                                     double *ustarW_pointer, double *rahR_pointer, double *rahW_pointer, double *H_pointer, double a, double b, int height,
+                                     int width)
 {
-  for (int line = start_line; line < end_line; line++)
+  // Identify position
+  unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
+  unsigned int row = threadIdx.y + blockIdx.y * blockDim.y;
+
+  while (row < height)
   {
-    for (int col = 0; col < width_band; col++)
+    if (col < width && row < height)
     {
-      int pos = line * width_band + col;
+      unsigned int pos = row * width + col;
+
       double DISP = d0_pointer[pos];
-      double dT_ini_terra = (a + b * (surface_temperature_vector[line][col] - 273.15));
+      double dT_ini_terra = a + b * (surface_temperature_pointer[pos] - 273.15);
 
-      // H_ini_terra
-      sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / aerodynamic_resistance_pointer[pos];
-
-      // L_MB_terra
-      double ustar_pow_3 = ustar_pointer[pos] * ustar_pointer[pos] * ustar_pointer[pos];
-
-      double L = -1 * ((RHO * SPECIFIC_HEAT_AIR * ustar_pow_3 * surface_temperature_vector[line][col]) / (VON_KARMAN * GRAVITY * sensible_heat_flux_vector[line][col]));
+      double sensibleHeatFlux = RHO * SPECIFIC_HEAT_AIR * (dT_ini_terra) / rahR_pointer[pos];
+      double L = -1 * ((RHO * SPECIFIC_HEAT_AIR * pow(ustarR_pointer[pos], 3) * surface_temperature_pointer[pos]) / (VON_KARMAN * GRAVITY * sensibleHeatFlux));
 
       double y2 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
       double x200 = pow((1 - (16 * (10 - DISP)) / L), 0.25);
@@ -36,38 +35,18 @@ void rah_correction_cycle_STEEP(int start_line, int end_line, double a, double b
         psi200 = 2 * log((1 + x200) / 2) + log((1 + x200 * x200) / 2) - 2 * atan(x200) + 0.5 * M_PI;
       }
 
-      // u*
-      double ust = (VON_KARMAN * ustar_pointer[pos]) / (log((10 - DISP) / zom_pointer[pos]) - psi200);
+      double ust = (VON_KARMAN * ustarR_pointer[pos]) / (log((10 - DISP) / zom_pointer[pos]) - psi200);
 
-      // rah
       double zoh_terra = zom_pointer[pos] / pow(exp(1.0), (kb1_pointer[pos]));
       double temp_rah1_corr_terra = (ust * VON_KARMAN);
       double temp_rah2_corr_terra = log((10 - DISP) / zom_pointer[pos]) - psi2;
       double temp_rah3_corr_terra = temp_rah1_corr_terra * log(zom_pointer[pos] / zoh_terra);
       double rah = (temp_rah1_corr_terra * temp_rah2_corr_terra) + temp_rah3_corr_terra;
 
-      ustar_pointer[pos] = ust;
-      aerodynamic_resistance_pointer[pos] = rah;
+      ustarW_pointer[pos] = ust;
+      rahW_pointer[pos] = rah;
+      H_pointer[pos] = sensibleHeatFlux;
     }
-  }
-};
-
-void sensible_heat_flux_final(int start_line, int end_line, double a, double b, int width_band,
-                              double **surface_temperature_vector, double **net_radiation_vector,
-                              double **soil_heat_vector, double **sensible_heat_flux_vector,
-                              double *aerodynamic_resistance_pointer)
-{
-  for (int line = start_line; line < end_line; line++)
-  {
-    for (int col = 0; col < width_band; col++)
-    {
-      int pos = line * width_band + col;
-      sensible_heat_flux_vector[line][col] = RHO * SPECIFIC_HEAT_AIR * (a + b * (surface_temperature_vector[line][col] - 273.15)) / aerodynamic_resistance_pointer[pos];
-
-      if (!isnan(sensible_heat_flux_vector[line][col]) && sensible_heat_flux_vector[line][col] > (net_radiation_vector[line][col] - soil_heat_vector[line][col]))
-      {
-        sensible_heat_flux_vector[line][col] = net_radiation_vector[line][col] - soil_heat_vector[line][col];
-      }
-    }
+    row += blockDim.y * gridDim.y;
   }
 }

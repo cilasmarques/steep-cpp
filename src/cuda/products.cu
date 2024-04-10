@@ -1,4 +1,6 @@
 #include "products.h"
+#include "kernels.cuh"
+#include "cuda_utils.h"
 
 Products::Products() {}
 
@@ -508,7 +510,7 @@ void Products::evapotranspiration_function(int width_band, int line)
     this->evapotranspiration_vector[line][col] = this->net_radiation_24h_vector[line][col] * this->evapotranspiration_fraction_vector[line][col] * 0.035;
 };
 
-string Products::rah_correction_function(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel)
+string Products::rah_correction_function_blocks(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel)
 {
   system_clock::time_point begin_core, end_core;
   int64_t general_time_core, initial_time_core, final_time_core;
@@ -520,8 +522,8 @@ string Products::rah_correction_function(double ndvi_min, double ndvi_max, Candi
   HANDLE_ERROR(cudaSetDevice(dev));
 
   int num_sms = deviceProp.multiProcessorCount;
-  int num_blocks = deviceProp.maxBlocksPerMultiProcessor * num_sms;
-  int num_threads = deviceProp.maxThreadsPerMultiProcessor * num_blocks;
+  // int num_blocks = deviceProp.maxBlocksPerMultiProcessor * num_sms;
+  // int num_threads = deviceProp.maxThreadsPerMultiProcessor * num_blocks;
 
   dim3 blockSize(1, 1024);
   dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, num_sms);

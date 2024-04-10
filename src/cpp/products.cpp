@@ -627,5 +627,5 @@ string Products::rah_correction_function_threads(int threads_num, double ndvi_mi
     cold_pixel.aerodynamic_resistance.push_back(rah_cold);
   }
 
-  return "P2 - RAH - PARALLEL - CORE " + to_string(threads_num) + ", " + to_string(general_time_core) + ", " + to_string(initial_time_core) + ", " + to_string(final_time_core) + "\n";
+  return "P2 - RAH - PARALLEL - CORE, " + to_string(general_time_core) + ", " + to_string(initial_time_core) + ", " + to_string(final_time_core) + "\n";
 }

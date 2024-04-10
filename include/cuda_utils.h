@@ -3,8 +3,8 @@
 #include <cuda.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "cuda_profiler_api.h"
 #include <cuda_runtime_api.h>
+#include "cuda_profiler_api.h"
 
 /**
  * This function checks the return value of the CUDA runtime call and exits

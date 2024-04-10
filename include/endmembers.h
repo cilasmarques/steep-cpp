@@ -1,7 +1,6 @@
 #pragma once
 
 #include "utils.h"
-#include "reader.h"
 #include "constants.h"
 #include "parameters.h"
 #include "candidate.h"

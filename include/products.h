@@ -317,7 +317,6 @@ struct Products
 
   /**
    * @brief  The  aerodynamic resistance convergence is computed.
-   * @param  threads_num: Number of threads.
    * @param  ndvi_min: Minimum NDVI.
    * @param  ndvi_max: Maximum NDVI.
    * @param  hot_pixel: Hot pixel.
@@ -339,12 +338,11 @@ struct Products
 
   /**
    * @brief  The  aerodynamic resistance convergence is computed.
-   * @param  threads_num: Number of threads.
    * @param  ndvi_min: Minimum NDVI.
    * @param  ndvi_max: Maximum NDVI.
    * @param  hot_pixel: Hot pixel.
    * @param  cold_pixel: Cold pixel.
    * @return  string: Time message.
    */
-  string rah_correction_function_blocks(int threads_num, double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel);
+  string rah_correction_function_blocks(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel);
 };

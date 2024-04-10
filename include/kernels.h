@@ -1,7 +1,6 @@
 #pragma once
 
-#include "parameters.h"
-#include "candidate.h"
+#include "constants.h"
 
 /**
  * @brief  Compute the rah correction cycle. (STEEP algorithm)
