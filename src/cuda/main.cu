@@ -108,12 +108,16 @@ int main(int argc, char *argv[])
   time_output << "TOTAL," << general_time << "," << initial_time << "," << final_time << std::endl;
   time_output.close();
 
-  landsat.save_products(output_products);
+  // landsat.save_products(output_products);
+  // landsat.print_products(output_products);
+  // landsat.read_products(output_folder);
   landsat.close();
 
   // =====  END + METADATA OUTPUT =====
   ofstream metadata_output;
   metadata_output.open(output_metadata);
+  metadata_output << "Image height: " << landsat.height_band << std::endl;
+  metadata_output << "Image width: " << landsat.width_band << std::endl;
   metadata_output << "informed threads: " << threads_num << std::endl;
   metadata_output << "informed blocks: " << blocks_num << std::endl;
   metadata_output << "The GPU is a " << deviceProp.name << std::endl;

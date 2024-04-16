@@ -184,7 +184,7 @@ string Landsat::compute_H_ET(Station station)
   return "P2 - FINAL PRODUCTS," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time) + "\n";
 };
 
-void Landsat::save_products(string output_path)
+void Landsat::print_products(string output_path)
 {
   system_clock::time_point begin, end;
   int64_t general_time, initial_time, final_time;
@@ -236,6 +236,120 @@ void Landsat::save_products(string output_path)
   general_time = duration_cast<milliseconds>(end - begin).count();
   final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
   std::cout << "P3 - WRITE PRODUCTS," << general_time << "," << initial_time << "," << final_time << std::endl;
+};
+
+void Landsat::save_products(string output_path)
+{
+    int size = height_band * width_band;
+    ofstream outFile;
+
+    outFile.open("./products/NDVI.dat", std::ios::binary);
+    outFile.write(reinterpret_cast<char*>(&size), sizeof(size));
+    for (int i = 0; i < height_band; i++)
+      outFile.write(reinterpret_cast<char*>(products.ndvi_vector[i].data()), sizeof(double) * width_band);
+    outFile.close();
+
+    outFile.open("./products/ALBEDO.dat", std::ios::binary);
+    outFile.write(reinterpret_cast<char*>(&size), sizeof(size));
+    for (int i = 0; i < height_band; i++)
+      outFile.write(reinterpret_cast<char*>(products.albedo_vector[i].data()), sizeof(double) * width_band);
+    outFile.close();
+
+    outFile.open("./products/NET_RADIATION.dat", std::ios::binary);
+    outFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    for (int i = 0; i < height_band; i++)
+      outFile.write(reinterpret_cast<const char*>(products.net_radiation_vector[i].data()), sizeof(double) * width_band);
+    outFile.close();
+    
+    outFile.open("./products/SOIL_HEAT.dat", std::ios::binary);
+    outFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    for (int i = 0; i < height_band; i++)
+      outFile.write(reinterpret_cast<const char*>(products.soil_heat_vector[i].data()), sizeof(double) * width_band);
+    outFile.close();
+
+    outFile.open("./products/TS.dat", std::ios::binary);
+    outFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    outFile.write(reinterpret_cast<const char*>(products.surface_temperature_pointer), sizeof(int) * size);
+    outFile.close();
+
+    outFile.open("./products/ZOM.dat", std::ios::binary);
+    outFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    outFile.write(reinterpret_cast<const char*>(products.zom_pointer), sizeof(int) * size);
+    outFile.close();
+
+    outFile.open("./products/D0.dat", std::ios::binary);
+    outFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    outFile.write(reinterpret_cast<const char*>(products.d0_pointer), sizeof(int) * size);
+    outFile.close();
+
+    outFile.open("./products/KB1.dat", std::ios::binary);
+    outFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    outFile.write(reinterpret_cast<const char*>(products.kb1_pointer), sizeof(int) * size);
+    outFile.close();
+
+    outFile.open("./products/USTAR.dat", std::ios::binary);
+    outFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    outFile.write(reinterpret_cast<const char*>(products.ustar_pointer), sizeof(int) * size);
+    outFile.close();
+
+    outFile.open("./products/AERODYNAMIC_RESISTANCE.dat", std::ios::binary);
+    outFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    outFile.write(reinterpret_cast<const char*>(products.aerodynamic_resistance_pointer), sizeof(int) * size);
+    outFile.close();
+
+    outFile.open("./products/SENSIBLE_HEAT_FLUX.dat", std::ios::binary);
+    outFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    outFile.write(reinterpret_cast<const char*>(products.sensible_heat_flux_pointer), sizeof(int) * size);
+    outFile.close();
+};
+
+void Landsat::read_products(string output_path) 
+{
+    ifstream inFile;
+    int size = height_band * width_band;
+
+    double *surface_pointer = new double[size];
+    double *zom_pointer = new double[size];
+    double *d0_pointer = new double[size];
+    double *kb1_pointer = new double[size];
+    double *ustar_pointer = new double[size];
+    double *aerodynamic_pointer = new double[size];
+    double *sensible_heat_pointer = new double[size];
+
+    inFile.open("./products/TS.dat", std::ios::binary);
+    inFile.read(reinterpret_cast<char*>(&size), sizeof(size));
+    inFile.read(reinterpret_cast<char*>(products.surface_temperature_pointer), sizeof(int) * size);
+    inFile.close();
+
+    inFile.open("./products/ZOM.dat", std::ios::binary);
+    inFile.read(reinterpret_cast<char*>(&size), sizeof(size));
+    inFile.read(reinterpret_cast<char*>(products.zom_pointer), sizeof(int) * size);
+    inFile.close();
+
+    inFile.open("./products/D0.dat", std::ios::binary);
+    inFile.read(reinterpret_cast<char*>(&size), sizeof(size));
+    inFile.read(reinterpret_cast<char*>(products.d0_pointer), sizeof(int) * size);
+    inFile.close();
+
+    inFile.open("./products/KB1.dat", std::ios::binary);
+    inFile.read(reinterpret_cast<char*>(&size), sizeof(size));
+    inFile.read(reinterpret_cast<char*>(products.kb1_pointer), sizeof(int) * size);
+    inFile.close();
+
+    inFile.open("./products/USTAR.dat", std::ios::binary);
+    inFile.read(reinterpret_cast<char*>(&size), sizeof(size));
+    inFile.read(reinterpret_cast<char*>(products.ustar_pointer), sizeof(int) * size);
+    inFile.close();
+
+    inFile.open("./products/AERODYNAMIC_RESISTANCE.dat", std::ios::binary);
+    inFile.read(reinterpret_cast<char*>(&size), sizeof(size));
+    inFile.read(reinterpret_cast<char*>(aerodynamic_pointer), sizeof(int) * size);
+    inFile.close();
+
+    inFile.open("./products/SENSIBLE_HEAT_FLUX.dat", std::ios::binary);
+    inFile.read(reinterpret_cast<char*>(&size), sizeof(size));
+    inFile.read(reinterpret_cast<char*>(products.sensible_heat_flux_pointer), sizeof(int) * size);
+    inFile.close();
 };
 
 void Landsat::close()
