@@ -51,7 +51,7 @@ string Landsat::select_endmembers(int method)
   return "P2 - PIXEL SELECTION," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time) + "\n";
 }
 
-string Landsat::converge_rah_cycle(Station station, int method, int threads_num, int blocks_num)
+string Landsat::converge_rah_cycle(Station station, int method, int threads_num)
 {
   string result = "";
   system_clock::time_point begin, end;

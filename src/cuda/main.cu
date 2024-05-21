@@ -25,6 +25,8 @@
  *              - INPUT_STATION_DATA_INDEX = 10;
  *              - INPUT_LAND_COVER_INDEX   = 11;
  *              - OUTPUT_FOLDER            = 12;
+ *              - METHOD_INDEX             = 13;
+ *              - THREADS_INDEX            = 14;
  * @return int
 */
 int main(int argc, char *argv[])
@@ -36,7 +38,6 @@ int main(int argc, char *argv[])
   int OUTPUT_FOLDER            = 12;
   int METHOD_INDEX             = 13;
   int THREADS_INDEX            = 14;
-  int BLOCKS_INDEX             = 15;
 
   cudaDeviceProp deviceProp;
   cudaGetDeviceProperties(&deviceProp, 0);
@@ -60,19 +61,11 @@ int main(int argc, char *argv[])
   }
 
   // load threads number
-  int threads_num = 1;
+  int threads_num = 1024;
   if(argc >= 15){
     string threads_flag = argv[THREADS_INDEX];
     if(threads_flag.substr(0,9) == "-threads=")
       threads_num = atof(threads_flag.substr(9, threads_flag.size()).c_str());
-  }
-
-  // load blocks number
-  int blocks_num = deviceProp.maxBlocksPerMultiProcessor;
-  if(argc >= 16){
-    string blocks_flag = argv[BLOCKS_INDEX];
-    if(blocks_flag.substr(0,8) == "-blocks=")
-      blocks_num = atof(blocks_flag.substr(8, blocks_flag.size()).c_str());
   }
 
   // load output folder
@@ -99,7 +92,7 @@ int main(int argc, char *argv[])
   time_output << "PHASE,TIMESTAMP,START_TIME,END_TIME" << std::endl;
   time_output << landsat.compute_Rn_G(sensor, station);
   time_output << landsat.select_endmembers(method);
-  time_output << landsat.converge_rah_cycle(station, method, threads_num, blocks_num);
+  time_output << landsat.converge_rah_cycle(station, method, threads_num);
   time_output << landsat.compute_H_ET(station);
 
   end = system_clock::now();
@@ -108,21 +101,22 @@ int main(int argc, char *argv[])
   time_output << "TOTAL," << general_time << "," << initial_time << "," << final_time << std::endl;
   time_output.close();
 
-  landsat.save_products(output_products);
+  // landsat.save_products(output_products);
   landsat.close();
 
   // =====  END + METADATA OUTPUT =====
   ofstream metadata_output;
   metadata_output.open(output_metadata);
+  metadata_output << "Image height: " << landsat.height_band << std::endl;
+  metadata_output << "Image width: " << landsat.width_band << std::endl;
   metadata_output << "informed threads: " << threads_num << std::endl;
-  metadata_output << "informed blocks: " << blocks_num << std::endl;
   metadata_output << "The GPU is a " << deviceProp.name << std::endl;
   metadata_output << "The GPU has " << deviceProp.multiProcessorCount << " SMs" << std::endl;
   metadata_output << "The GPU has " << deviceProp.persistingL2CacheMaxSize  << " bytes of L2 cache" << std::endl;
   metadata_output << "The GPU has " << deviceProp.concurrentKernels << " concurrent kernels" << std::endl;
   metadata_output << "The GPU has " << deviceProp.maxBlocksPerMultiProcessor << " max blocks per SM" << std::endl;
   metadata_output << "The GPU has " << deviceProp.maxThreadsPerMultiProcessor << " max threads per SM" << std::endl;
-  metadata_output << "The GPU has " << deviceProp.maxGridSize << " max grid size" << std::endl;
+  metadata_output << "Total of blocks to process:" << (landsat.width_band * landsat.height_band) / 1024 << std::endl;
   metadata_output.close();
 
   return 0;

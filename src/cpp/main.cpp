@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
   time_output << "PHASE,TIMESTAMP,START_TIME,END_TIME" << std::endl;
   time_output << landsat.compute_Rn_G(sensor, station);
   time_output << landsat.select_endmembers(method);
-  time_output << landsat.converge_rah_cycle(station, method, threads_num, 0);
+  time_output << landsat.converge_rah_cycle(station, method, threads_num);
   time_output << landsat.compute_H_ET(station);
 
   end = system_clock::now();

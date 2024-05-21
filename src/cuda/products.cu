@@ -510,7 +510,7 @@ void Products::evapotranspiration_function(int width_band, int line)
     this->evapotranspiration_vector[line][col] = this->net_radiation_24h_vector[line][col] * this->evapotranspiration_fraction_vector[line][col] * 0.035;
 };
 
-string Products::rah_correction_function_blocks(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel)
+string Products::rah_correction_function_blocks(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel, int threads_per_block)
 {
   system_clock::time_point begin_core, end_core;
   int64_t general_time_core, initial_time_core, final_time_core;
@@ -521,7 +521,7 @@ string Products::rah_correction_function_blocks(double ndvi_min, double ndvi_max
   HANDLE_ERROR(cudaGetDeviceProperties(&deviceProp, dev));
   HANDLE_ERROR(cudaSetDevice(dev));
 
-  int num_threads = 1024;
+  int num_threads = threads_per_block;
   int num_blocks = ceil(width_band * height_band / num_threads);
 
   double hot_pixel_aerodynamic = aerodynamic_resistance_pointer[hot_pixel.line * width_band + hot_pixel.col];

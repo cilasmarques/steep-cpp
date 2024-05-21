@@ -342,7 +342,8 @@ struct Products
    * @param  ndvi_max: Maximum NDVI.
    * @param  hot_pixel: Hot pixel.
    * @param  cold_pixel: Cold pixel.
+   * @param  threads_per_block: Threads per block.
    * @return  string: Time message.
    */
-  string rah_correction_function_blocks(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel);
+  string rah_correction_function_blocks(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel, int threads_per_block);
 };
