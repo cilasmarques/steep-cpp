@@ -31,7 +31,7 @@ string Landsat::select_endmembers(int method)
   int64_t general_time, initial_time, final_time;
 
   begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  initial_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
   if (method == 0)
   { // STEEP
@@ -45,8 +45,8 @@ string Landsat::select_endmembers(int method)
   }
 
   end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  general_time = duration_cast<nanoseconds>(end - begin).count();
+  final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
   return "P2 - PIXEL SELECTION," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time) + "\n";
 }
@@ -58,7 +58,7 @@ string Landsat::converge_rah_cycle(Station station, int method, int threads_num,
   int64_t general_time, initial_time, final_time;
 
   begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  initial_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
   double ustar_station = (VON_KARMAN * station.v6) / (log(station.WIND_SPEED / station.SURFACE_ROUGHNESS));
   double u10 = (ustar_station / VON_KARMAN) * log(10 / station.SURFACE_ROUGHNESS);
@@ -89,8 +89,8 @@ string Landsat::converge_rah_cycle(Station station, int method, int threads_num,
   result += products.rah_correction_function_blocks(ndvi_min, ndvi_max, hot_pixel, cold_pixel);
 
   end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  general_time = duration_cast<nanoseconds>(end - begin).count();
+  final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
   result += "P2 - RAH CYCLE," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time) + "\n";
   return result;
@@ -103,7 +103,7 @@ string Landsat::compute_Rn_G(Sensor sensor, Station station)
   int64_t general_time, initial_time, final_time;
 
   begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  initial_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
   TIFF *tal = this->bands_resampled[8];
   for (int line = 0; line < height_band; line++)
@@ -141,8 +141,8 @@ string Landsat::compute_Rn_G(Sensor sensor, Station station)
     _TIFFfree(tal_line_buff);
   }
   end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  general_time = duration_cast<nanoseconds>(end - begin).count();
+  final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
   return "P1 - Rn_G," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time) + "\n";
 }
 
@@ -152,7 +152,7 @@ string Landsat::compute_H_ET(Station station)
   int64_t general_time, initial_time, final_time;
 
   begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  initial_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
   double dr = (1 / mtl.distance_earth_sun) * (1 / mtl.distance_earth_sun);
   double sigma = 0.409 * sin(((2 * PI / 365) * mtl.julian_day) - 1.39);
@@ -179,8 +179,8 @@ string Landsat::compute_H_ET(Station station)
     products.evapotranspiration_function(width_band, line);
   }
   end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  general_time = duration_cast<nanoseconds>(end - begin).count();
+  final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
   return "P2 - FINAL PRODUCTS," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time) + "\n";
 };
 
@@ -190,7 +190,7 @@ void Landsat::save_products(string output_path)
   int64_t general_time, initial_time, final_time;
 
   begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  initial_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
   std::ofstream outputProds(output_path);
   std::streambuf *coutProds = std::cout.rdbuf();
@@ -233,8 +233,8 @@ void Landsat::save_products(string output_path)
   printVector2x2(products.evapotranspiration_vector);
 
   end = system_clock::now();
-  general_time = duration_cast<milliseconds>(end - begin).count();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  general_time = duration_cast<nanoseconds>(end - begin).count();
+  final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
   std::cout << "P3 - WRITE PRODUCTS," << general_time << "," << initial_time << "," << final_time << std::endl;
 };
 

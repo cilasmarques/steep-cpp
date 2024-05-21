@@ -542,15 +542,15 @@ string Products::rah_correction_function_serial(double ndvi_min, double ndvi_max
 
     // ==== Paralelization core
     begin_core = system_clock::now();
-    initial_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    initial_time_core = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
     rah_correction_cycle_STEEP(0, height_band, width_band, a, b, surface_temperature_pointer,
                             d0_pointer, zom_pointer, kb1_pointer, sensible_heat_flux_pointer, ustar_pointer,
                             aerodynamic_resistance_pointer);
 
     end_core = system_clock::now();
-    general_time_core = duration_cast<milliseconds>(end_core - begin_core).count();
-    final_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    general_time_core = duration_cast<nanoseconds>(end_core - begin_core).count();
+    final_time_core = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
     // ==== Paralelization core
 
     double rah_hot = this->aerodynamic_resistance_pointer[hot_pixel.line * width_band + hot_pixel.col];
@@ -601,7 +601,7 @@ string Products::rah_correction_function_threads(int threads_num, double ndvi_mi
 
     // ==== Paralelization core
     begin_core = system_clock::now();
-    initial_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    initial_time_core = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
     for (int j = 0; j < threads_num; j++)
     {
@@ -616,8 +616,8 @@ string Products::rah_correction_function_threads(int threads_num, double ndvi_mi
       threads[j].join();
 
     end_core = system_clock::now();
-    general_time_core = duration_cast<milliseconds>(end_core - begin_core).count();
-    final_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    general_time_core = duration_cast<nanoseconds>(end_core - begin_core).count();
+    final_time_core = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
     // ==== Paralelization core
 
     double rah_hot = this->aerodynamic_resistance_pointer[hot_pixel.line * width_band + hot_pixel.col];

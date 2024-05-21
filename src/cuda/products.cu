@@ -571,15 +571,15 @@ string Products::rah_correction_function_blocks(double ndvi_min, double ndvi_max
 
     // ==== Paralelization core
     begin_core = system_clock::now();
-    initial_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    initial_time_core = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
     rah_correction_cycle_STEEP<<<num_blocks, num_threads>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 
     end_core = system_clock::now();
-    general_time_core = duration_cast<milliseconds>(end_core - begin_core).count();
-    final_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    general_time_core = duration_cast<nanoseconds>(end_core - begin_core).count();
+    final_time_core = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
     // ====
 
     HANDLE_ERROR(cudaMemcpy(ustar_pointer, devUstarW, nBytes_band, cudaMemcpyDeviceToHost));

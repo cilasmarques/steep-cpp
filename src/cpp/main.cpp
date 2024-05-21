@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
   int64_t initial_time, final_time, general_time;
 
   begin = system_clock::now();
-  initial_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  initial_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
 
   time_output << "PHASE,TIMESTAMP,START_TIME,END_TIME" << std::endl;
   time_output << landsat.compute_Rn_G(sensor, station);
@@ -92,8 +92,8 @@ int main(int argc, char *argv[])
   time_output << landsat.compute_H_ET(station);
 
   end = system_clock::now();
-  final_time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-  general_time = duration_cast<milliseconds>(end.time_since_epoch() - begin.time_since_epoch()).count();
+  final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+  general_time = duration_cast<nanoseconds>(end.time_since_epoch() - begin.time_since_epoch()).count();
   time_output << "TOTAL," << general_time << "," << initial_time << "," << final_time << std::endl;
   time_output.close();
 
