@@ -344,5 +344,5 @@ struct Products
    * @param  cold_pixel: Cold pixel.
    * @return  string: Time message.
    */
-  string rah_correction_function_blocks(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel, int blocks_num);
+  string rah_correction_function_blocks(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel);
 };
