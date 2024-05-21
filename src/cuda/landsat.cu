@@ -35,14 +35,18 @@ string Landsat::select_endmembers(int method)
 
   if (method == 0)
   { // STEEP
-    this->hot_pixel = getHotPixelSTEPP(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
-    this->cold_pixel = getColdPixelSTEPP(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
+	  pair<Candidate, Candidate> pixels = getEndmembersSTEPP(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
+		hot_pixel = pixels.first; cold_pixel = pixels.second;
   }
   else if (method == 1)
   { // ASEBAL
-    this->hot_pixel = getHotPixelASEBAL(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
-    this->cold_pixel = getColdPixelASEBAL(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
+	  pair<Candidate, Candidate> pixels = getEndmembersASEBAL(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
+		hot_pixel = pixels.first; cold_pixel = pixels.second;
   }
+
+  //print the cold and hot pixels
+  std::cout << "Cold Pixel: " << cold_pixel.ndvi << " " << cold_pixel.temperature << " " << cold_pixel.net_radiation << std::endl;
+  std::cout << "Hot Pixel: " << hot_pixel.ndvi << " " << hot_pixel.temperature << " " << hot_pixel.net_radiation << std::endl;
 
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();
@@ -86,7 +90,7 @@ string Landsat::converge_rah_cycle(Station station, int method, int threads_num,
     products.aerodynamic_resistance_fuction(line);
   }
 
-  result += products.rah_correction_function_blocks(ndvi_min, ndvi_max, hot_pixel, cold_pixel);
+  result += products.rah_correction_function_blocks(ndvi_min, ndvi_max, hot_pixel, cold_pixel, blocks_num);
 
   end = system_clock::now();
   general_time = duration_cast<milliseconds>(end - begin).count();

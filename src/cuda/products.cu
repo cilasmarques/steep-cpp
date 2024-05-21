@@ -510,7 +510,7 @@ void Products::evapotranspiration_function(int width_band, int line)
     this->evapotranspiration_vector[line][col] = this->net_radiation_24h_vector[line][col] * this->evapotranspiration_fraction_vector[line][col] * 0.035;
 };
 
-string Products::rah_correction_function_blocks(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel)
+string Products::rah_correction_function_blocks(double ndvi_min, double ndvi_max, Candidate hot_pixel, Candidate cold_pixel, int blocks_num)
 {
   system_clock::time_point begin_core, end_core;
   int64_t general_time_core, initial_time_core, final_time_core;
@@ -521,13 +521,8 @@ string Products::rah_correction_function_blocks(double ndvi_min, double ndvi_max
   HANDLE_ERROR(cudaGetDeviceProperties(&deviceProp, dev));
   HANDLE_ERROR(cudaSetDevice(dev));
 
-  int num_sms = deviceProp.multiProcessorCount;
-  // int num_blocks = deviceProp.maxBlocksPerMultiProcessor * num_sms;
-  // int num_threads = deviceProp.maxThreadsPerMultiProcessor * num_blocks;
-
   dim3 blockSize(1, 1024);
-  dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, num_sms);
-  // dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, (height_band + blockSize.y - 1) / blockSize.y);
+  dim3 gridSize((width_band + blockSize.x - 1) / blockSize.x, blocks_num);
 
   double hot_pixel_aerodynamic = aerodynamic_resistance_pointer[hot_pixel.line * width_band + hot_pixel.col];
   hot_pixel.aerodynamic_resistance.push_back(hot_pixel_aerodynamic);
@@ -579,7 +574,6 @@ string Products::rah_correction_function_blocks(double ndvi_min, double ndvi_max
     initial_time_core = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
     rah_correction_cycle_STEEP<<<gridSize, blockSize>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
-    // rah_correction_cycle_STEEP<<<num_threads, num_blocks>>>(devTS, devD0, devKB1, devZom, devUstarR, devUstarW, devRahR, devRahW, devH, a, b, height_band, width_band);
     HANDLE_ERROR(cudaDeviceSynchronize());
     HANDLE_ERROR(cudaGetLastError());
 

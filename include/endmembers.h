@@ -25,11 +25,12 @@ void compute_H0(vector<double> net_radiation_line, vector<double> soil_heat_flux
  * @param height_band: Band height.
  * @param width_band: Band width.
  * @param first_interval: First interval.
+ * @param middle_interval: Middle interval.
  * @param last_interval: Last interval.
  *
  * @retval void
  */
-void get_quartiles(vector<vector<double>> target_vector, double *v_quartile, int height_band, int width_band, double first_interval, double last_interval);
+void get_quartiles(vector<vector<double>> target_vector, double *v_quartile, int height_band, int width_band, double first_interval, double middle_interval, double last_interval);
 
 /**
  * @brief Check if the pixel is not a invalid value ( NaN or Inf )
@@ -42,7 +43,7 @@ void get_quartiles(vector<vector<double>> target_vector, double *v_quartile, int
 void filter_valid_values(vector<double> target_line, double *target_values, int width_band, int *pos);
 
 /**
- * @brief Get the hot pixel based on the ASEBAL algorithm.
+ * @brief Get the hot and cold pixels based on the ASEBAL algorithm.
  *
  * @param ndvi_vector: NDVI vector.
  * @param surface_temperature_vector: Surface temperature vector.
@@ -54,22 +55,7 @@ void filter_valid_values(vector<double> target_line, double *target_values, int 
  *
  * @retval Candidate
  */
-Candidate getHotPixelASEBAL(vector<vector<double>> ndvi_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> albedo_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, int height_band, int width_band);
-
-/**
- * @brief Get the cold pixel based on the ASEBAL algorithm.
- *
- * @param ndvi_vector: NDVI vector.
- * @param surface_temperature_vector: Surface temperature vector.
- * @param albedo_vector: Albedo vector.
- * @param net_radiation_vector: Net radiation vector.
- * @param soil_heat_vector: Soil heat flux vector.
- * @param height_band: Band height.
- * @param width_band: Band width.
- *
- * @retval Candidate
- */
-Candidate getColdPixelASEBAL(vector<vector<double>> ndvi_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> albedo_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, int height_band, int width_band);
+pair<Candidate, Candidate> getEndmembersASEBAL(vector<vector<double>> ndvi_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> albedo_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, int height_band, int width_band);
 
 /**
  * @brief Get the hot pixel based on the STEPP algorithm.
@@ -84,19 +70,4 @@ Candidate getColdPixelASEBAL(vector<vector<double>> ndvi_vector, vector<vector<d
  *
  * @retval Candidate
  */
-Candidate getHotPixelSTEPP(vector<vector<double>> ndvi_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> albedo_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, int height_band, int width_band);
-
-/**
- * @brief Get the cold pixel based on the STEPP algorithm.
- *
- * @param ndvi_vector: NDVI vector.
- * @param surface_temperature_vector: Surface temperature vector.
- * @param albedo_vector: Albedo vector.
- * @param net_radiation_vector: Net radiation vector.
- * @param soil_heat_vector: Soil heat flux vector.
- * @param height_band: Band height.
- * @param width_band: Band width.
- *
- * @retval Candidate
- */
-Candidate getColdPixelSTEPP(vector<vector<double>> ndvi_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> albedo_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, int height_band, int width_band);
+pair<Candidate, Candidate> getEndmembersSTEPP(vector<vector<double>> ndvi_vector, vector<vector<double>> surface_temperature_vector, vector<vector<double>> albedo_vector, vector<vector<double>> net_radiation_vector, vector<vector<double>> soil_heat_vector, int height_band, int width_band);

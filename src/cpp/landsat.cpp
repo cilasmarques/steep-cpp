@@ -35,13 +35,13 @@ string Landsat::select_endmembers(int method)
 
   if (method == 0)
   { // STEEP
-    this->hot_pixel = getHotPixelSTEPP(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
-    this->cold_pixel = getColdPixelSTEPP(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
+	  pair<Candidate, Candidate> pixels = getEndmembersSTEPP(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
+		hot_pixel = pixels.first; cold_pixel = pixels.second;
   }
   else if (method == 1)
   { // ASEBAL
-    this->hot_pixel = getHotPixelASEBAL(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
-    this->cold_pixel = getColdPixelASEBAL(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
+	  pair<Candidate, Candidate> pixels = getEndmembersASEBAL(products.ndvi_vector, products.surface_temperature_vector, products.albedo_vector, products.net_radiation_vector, products.soil_heat_vector, height_band, width_band);
+		hot_pixel = pixels.first; cold_pixel = pixels.second;
   }
 
   end = system_clock::now();
