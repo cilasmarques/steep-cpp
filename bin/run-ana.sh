@@ -5,8 +5,6 @@ parent_dir=$(dirname -- "$current_dir")
 cd -P -- "$parent_dir"
 
 OUTPUT_DATA_PATH=./output
-ANALYSIS_OUTPUT_PATH=$OUTPUT_DATA_PATH/analysis
-mkdir -p $ANALYSIS_OUTPUT_PATH
 
 for i in $(seq -f "%02g" 1 3); do
   ./src/main "$@" &
@@ -31,6 +29,9 @@ for i in $(seq -f "%02g" 1 3); do
   # kill $(pidof -s collect-gpu-memory-usage.sh)
 
   # Put the data in the final folder
+  THREADS_NUM=`echo "$@" | grep -oP '(?<=-threads=)[0-9]+'`
+  ANALYSIS_OUTPUT_PATH=$OUTPUT_DATA_PATH/analysis-$THREADS_NUM
+  
   mkdir -p $ANALYSIS_OUTPUT_PATH/experiment${i}
   mv $OUTPUT_DATA_PATH/*.csv $ANALYSIS_OUTPUT_PATH/experiment${i}
   mv $OUTPUT_DATA_PATH/*.txt $ANALYSIS_OUTPUT_PATH/experiment${i}
