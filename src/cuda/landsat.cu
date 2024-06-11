@@ -86,6 +86,28 @@ string Landsat::converge_rah_cycle(Station station, int method, int threads_per_
     products.aerodynamic_resistance_fuction(line);
   }
 
+  ofstream outFile;
+
+  outFile.open("./input/raw/ZOM.dat", std::ios::binary);
+  outFile.write(reinterpret_cast<char*>(products.zom_pointer), height_band * width_band * sizeof(double));
+  outFile.close();
+
+  outFile.open("./input/raw/D0.dat", std::ios::binary);
+  outFile.write(reinterpret_cast<char*>(products.d0_pointer), height_band * width_band * sizeof(double));
+  outFile.close();
+
+  outFile.open("./input/raw/KB1.dat", std::ios::binary);
+  outFile.write(reinterpret_cast<char*>(products.kb1_pointer), height_band * width_band * sizeof(double));
+  outFile.close();
+
+  outFile.open("./input/raw/USTAR.dat", std::ios::binary);
+  outFile.write(reinterpret_cast<char*>(products.ustar_pointer), height_band * width_band * sizeof(double));
+  outFile.close();
+
+  outFile.open("./input/raw/AERODYNAMIC_RESISTANCE.dat", std::ios::binary);
+  outFile.write(reinterpret_cast<char*>(products.aerodynamic_resistance_pointer), height_band * width_band * sizeof(double));
+  outFile.close();
+
   result += products.rah_correction_function_blocks(ndvi_min, ndvi_max, hot_pixel, cold_pixel, threads_per_block);
 
   end = system_clock::now();
@@ -143,6 +165,47 @@ string Landsat::compute_Rn_G(Sensor sensor, Station station)
   end = system_clock::now();
   general_time = duration_cast<nanoseconds>(end - begin).count();
   final_time = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+
+  ofstream outFile;
+
+  double ndvi_pointer[height_band][width_band];
+  double albedo_pointer[height_band][width_band];
+  double net_radiation_pointer[height_band][width_band];
+  double soil_heat_pointer[height_band][width_band];
+  double ts_pointer[height_band][width_band];
+
+  for (int i = 0; i < height_band; i++)
+  {
+    for (int j = 0; j < width_band; j++)
+    {
+      ndvi_pointer[i][j] = products.ndvi_vector[i][j];
+      albedo_pointer[i][j] = products.albedo_vector[i][j];
+      net_radiation_pointer[i][j] = products.net_radiation_vector[i][j];
+      soil_heat_pointer[i][j] = products.soil_heat_vector[i][j];
+      ts_pointer[i][j] = products.surface_temperature_vector[i][j];
+    }
+  }
+
+  outFile.open("./input/raw/NDVI.dat", std::ios::binary);
+  outFile.write(reinterpret_cast<char*>(ndvi_pointer), height_band * width_band * sizeof(double));
+  outFile.close();
+
+  outFile.open("./input/raw/ALBEDO.dat", std::ios::binary);
+  outFile.write(reinterpret_cast<char*>(albedo_pointer), height_band * width_band * sizeof(double));
+  outFile.close();
+
+  outFile.open("./input/raw/NET_RADIATION.dat", std::ios::binary);
+  outFile.write(reinterpret_cast<char*>(net_radiation_pointer), height_band * width_band * sizeof(double));
+  outFile.close();
+
+  outFile.open("./input/raw/SOIL_HEAT_FLUX.dat", std::ios::binary);
+  outFile.write(reinterpret_cast<char*>(soil_heat_pointer), height_band * width_band * sizeof(double));
+  outFile.close();
+
+  outFile.open("./input/raw/TS.dat", std::ios::binary);
+  outFile.write(reinterpret_cast<char*>(ts_pointer), height_band * width_band * sizeof(double));
+  outFile.close();
+
   return "P1 - Rn_G," + std::to_string(general_time) + "," + std::to_string(initial_time) + "," + std::to_string(final_time) + "\n";
 }
 
