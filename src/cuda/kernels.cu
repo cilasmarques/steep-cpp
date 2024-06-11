@@ -4,9 +4,12 @@ __global__ void rah_correction_cycle_STEEP(double *surface_temperature_pointer, 
                                            double *ustarW_pointer, double *rahR_pointer, double *rahW_pointer, double *H_pointer, double a, double b, int height,
                                            int width)
 {
-  // Identify position
-  unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int row = threadIdx.y + blockIdx.y * blockDim.y;
+  // Identify 1D position
+  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+
+  // Map 1D position to 2D grid
+  unsigned int row = idx / width;
+  unsigned int col = idx % width;
 
   if (col < width && row < height)
   {
